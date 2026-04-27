@@ -12,17 +12,18 @@ export type Permission =
   | "manage_schools"
   | "manage_staff"
   | "manage_students"
+  | "manage_classes"
   | "manage_materials"
   | "manage_fees"
   | "manage_logistics"
   | "view_reports";
 
 export const PERMISSIONS: Record<Role, Permission[]> = {
-  super_admin: ["manage_schools", "manage_staff", "manage_students", "manage_materials", "manage_fees", "manage_logistics", "view_reports"],
-  school_admin: ["manage_staff", "manage_students", "manage_materials", "manage_fees", "manage_logistics", "view_reports"],
+  super_admin: ["manage_schools", "manage_staff", "manage_students", "manage_classes", "manage_materials", "manage_fees", "manage_logistics", "view_reports"],
+  school_admin: ["manage_staff", "manage_students", "manage_classes", "manage_materials", "manage_fees", "manage_logistics", "view_reports"],
   finance_staff: ["manage_fees", "view_reports"],
   logistics_staff: ["manage_logistics", "view_reports"],
-  academic_staff: ["manage_students", "view_reports"],
+  academic_staff: ["manage_students", "manage_classes", "view_reports"],
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -36,6 +37,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 export type User = {
   id: string;
   email: string;
+  username?: string;
   password: string;
   name: string;
   role: Role;
@@ -49,11 +51,30 @@ export type School = {
   createdAt: string;
 };
 
+// Class level: L (Levels with trades, e.g. L3-L5) or S (Senior, e.g. S1-S5, no trade)
+export type ClassLevel = "L3" | "L4" | "L5" | "S1" | "S2" | "S3" | "S4" | "S5";
+
+export type SchoolClass = {
+  id: string;
+  schoolId: string;
+  level: ClassLevel;
+  trade?: string | null;        // full trade name e.g. "Computer System and Architecture" (only for L*)
+  abbreviation?: string | null; // short e.g. "CSA"
+  createdAt: string;
+};
+
+export function classDisplayName(c: Pick<SchoolClass, "level" | "abbreviation" | "trade">): string {
+  if (c.level.startsWith("L") && c.abbreviation) return `${c.level} ${c.abbreviation}`;
+  if (c.level.startsWith("L") && c.trade) return `${c.level} ${c.trade}`;
+  return c.level;
+}
+
 export type Student = {
   id: string;
   schoolId: string;
   name: string;
-  className: string;
+  classId: string;       // reference to SchoolClass
+  className?: string;    // legacy, kept for backward compat
 };
 
 export type MaterialKind = "fee" | "logistics" | "academic";
@@ -80,12 +101,13 @@ export type Tracking = {
 type DB = {
   users: User[];
   schools: School[];
+  classes: SchoolClass[];
   students: Student[];
   materials: Material[];
   tracking: Tracking[];
 };
 
-const KEY = "acadex_db_v2";
+const KEY = "acadex_db_v3";
 const SESSION = "acadex_session_v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -93,9 +115,9 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 function seed(): DB {
   const users: User[] = [
-    { id: "u_super", email: "admin@acadex.com", password: "admin123", name: "Super Admin", role: "super_admin", schoolId: null },
+    { id: "u_super", email: "admin@acadex.com", username: "admin", password: "admin123", name: "Super Admin", role: "super_admin", schoolId: null },
   ];
-  return { users, schools: [], students: [], materials: [], tracking: [] };
+  return { users, schools: [], classes: [], students: [], materials: [], tracking: [] };
 }
 
 export function loadDB(): DB {
@@ -107,7 +129,9 @@ export function loadDB(): DB {
       localStorage.setItem(KEY, JSON.stringify(s));
       return s;
     }
-    return JSON.parse(raw) as DB;
+    const parsed = JSON.parse(raw) as DB;
+    if (!parsed.classes) parsed.classes = [];
+    return parsed;
   } catch {
     const s = seed();
     localStorage.setItem(KEY, JSON.stringify(s));
@@ -138,11 +162,30 @@ export function setSession(u: User | null) {
   window.dispatchEvent(new Event("acadex:session"));
 }
 
-export function login(email: string, password: string): User | null {
+// Login accepts either email or username
+export function login(identifier: string, password: string): User | null {
   const db = loadDB();
-  const u = db.users.find((x) => x.email.toLowerCase() === email.toLowerCase() && x.password === password);
+  const id = identifier.trim().toLowerCase();
+  const u = db.users.find((x) =>
+    (x.email.toLowerCase() === id || (x.username ?? "").toLowerCase() === id) &&
+    x.password === password
+  );
   if (u) setSession(u);
   return u ?? null;
+}
+
+export function changePassword(userId: string, currentPassword: string, newPassword: string): { ok: boolean; error?: string } {
+  const db = loadDB();
+  const u = db.users.find((x) => x.id === userId);
+  if (!u) return { ok: false, error: "User not found" };
+  if (u.password !== currentPassword) return { ok: false, error: "Current password is incorrect" };
+  if (!newPassword || newPassword.length < 6) return { ok: false, error: "New password must be at least 6 characters" };
+  u.password = newPassword;
+  saveDB(db);
+  // refresh session if it's the current user
+  const sess = getSession();
+  if (sess && sess.id === userId) setSession(u);
+  return { ok: true };
 }
 
 export function hasPermission(user: User | null, perm: Permission): boolean {

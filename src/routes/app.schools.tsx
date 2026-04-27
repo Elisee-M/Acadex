@@ -31,16 +31,21 @@ function SchoolsPage() {
   const [location, setLocation] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminUsername, setAdminUsername] = useState("");
   const [adminPass, setAdminPass] = useState("");
 
   function add() {
     if (!name || !adminEmail) return toast.error("Fill required fields");
     const next = loadDB();
+    const emailLower = adminEmail.toLowerCase();
+    const usernameLower = adminUsername.trim().toLowerCase();
+    if (next.users.some((u) => u.email.toLowerCase() === emailLower)) return toast.error("Admin email already exists");
+    if (usernameLower && next.users.some((u) => (u.username ?? "").toLowerCase() === usernameLower)) return toast.error("Username already taken");
     const sid = "sch_" + uid();
     next.schools.push({ id: sid, name, location, createdAt: new Date().toISOString() });
-    next.users.push({ id: "u_" + uid(), name: adminName || "School Admin", email: adminEmail, password: adminPass || "school123", role: "school_admin", schoolId: sid });
+    next.users.push({ id: "u_" + uid(), name: adminName || "School Admin", email: adminEmail, username: adminUsername.trim() || undefined, password: adminPass || "school123", role: "school_admin", schoolId: sid });
     saveDB(next);
-    setOpen(false); setName(""); setLocation(""); setAdminName(""); setAdminEmail(""); setAdminPass("");
+    setOpen(false); setName(""); setLocation(""); setAdminName(""); setAdminEmail(""); setAdminUsername(""); setAdminPass("");
     toast.success("School created");
   }
 
@@ -48,6 +53,7 @@ function SchoolsPage() {
     const next = loadDB();
     next.schools = next.schools.filter((s) => s.id !== id);
     next.users = next.users.filter((u) => u.schoolId !== id);
+    next.classes = next.classes.filter((c) => c.schoolId !== id);
     next.students = next.students.filter((s) => s.schoolId !== id);
     next.materials = next.materials.filter((m) => m.schoolId !== id);
     next.tracking = next.tracking.filter((t) => t.schoolId !== id);
@@ -71,6 +77,7 @@ function SchoolsPage() {
               <div className="border-t pt-3"><Label className="text-xs uppercase tracking-wide text-muted-foreground">Assign School Admin</Label></div>
               <div><Label>Admin name</Label><Input value={adminName} onChange={(e) => setAdminName(e.target.value)} /></div>
               <div><Label>Admin email</Label><Input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} /></div>
+              <div><Label>Admin username (optional)</Label><Input value={adminUsername} onChange={(e) => setAdminUsername(e.target.value)} placeholder="for sign-in" /></div>
               <div><Label>Temporary password</Label><Input value={adminPass} onChange={(e) => setAdminPass(e.target.value)} placeholder="school123" /></div>
             </div>
             <DialogFooter><Button onClick={add} variant="gradient">Create</Button></DialogFooter>

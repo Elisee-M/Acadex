@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, uid, hasPermission, ROLE_LABEL, type Role } from "@/lib/store";
+import { loadDB, saveDB, uid, hasPermission, ROLE_LABEL, type Role, changePassword } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { Plus, Trash2, RotateCcw } from "lucide-react";
+import { Plus, Trash2, RotateCcw, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { resetDB } from "@/lib/store";
 
@@ -28,16 +28,25 @@ function SettingsPage() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("finance_staff");
 
+  // password change state
+  const [curPwd, setCurPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+
   function addStaff() {
-    if (!name || !email || !password) return toast.error("Fill all fields");
+    if (!name || !email || !password) return toast.error("Fill all required fields");
     const next = loadDB();
-    if (next.users.some((u) => u.email.toLowerCase() === email.toLowerCase())) return toast.error("Email already exists");
-    next.users.push({ id: "u_" + uid(), name, email, password, role, schoolId: user.schoolId });
+    const emailLower = email.toLowerCase();
+    const usernameLower = username.trim().toLowerCase();
+    if (next.users.some((u) => u.email.toLowerCase() === emailLower)) return toast.error("Email already exists");
+    if (usernameLower && next.users.some((u) => (u.username ?? "").toLowerCase() === usernameLower)) return toast.error("Username already taken");
+    next.users.push({ id: "u_" + uid(), name, email, username: username.trim() || undefined, password, role, schoolId: user.schoolId });
     saveDB(next);
-    setOpen(false); setName(""); setEmail(""); setPassword("");
+    setOpen(false); setName(""); setEmail(""); setUsername(""); setPassword("");
     toast.success("Staff added");
   }
 
@@ -45,6 +54,15 @@ function SettingsPage() {
     const next = loadDB();
     next.users = next.users.filter((u) => u.id !== id);
     saveDB(next);
+  }
+
+  function submitPasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPwd !== confirmPwd) return toast.error("New passwords do not match");
+    const res = changePassword(user.id, curPwd, newPwd);
+    if (!res.ok) return toast.error(res.error || "Could not change password");
+    setCurPwd(""); setNewPwd(""); setConfirmPwd("");
+    toast.success("Password updated");
   }
 
   return (
@@ -59,7 +77,22 @@ function SettingsPage() {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div><Label>Name</Label><Input value={user.name} disabled /></div>
           <div><Label>Email</Label><Input value={user.email} disabled /></div>
+          <div><Label>Username</Label><Input value={user.username || "—"} disabled /></div>
           <div><Label>Role</Label><Input value={ROLE_LABEL[user.role]} disabled /></div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-[var(--shadow-card)]">
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4" /> Change password</CardTitle></CardHeader>
+        <CardContent>
+          <form onSubmit={submitPasswordChange} className="grid gap-4 md:grid-cols-3">
+            <div><Label>Current password</Label><Input type="password" value={curPwd} onChange={(e) => setCurPwd(e.target.value)} required /></div>
+            <div><Label>New password</Label><Input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} required /></div>
+            <div><Label>Confirm new password</Label><Input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} required /></div>
+            <div className="md:col-span-3">
+              <Button type="submit" variant="gradient">Update password</Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 
@@ -74,6 +107,7 @@ function SettingsPage() {
                 <div className="space-y-3">
                   <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
                   <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+                  <div><Label>Username (optional)</Label><Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="for sign-in" /></div>
                   <div><Label>Password</Label><Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
                   <div>
                     <Label>Role</Label>
@@ -94,12 +128,13 @@ function SettingsPage() {
           </CardHeader>
           <CardContent>
             <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead></TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Username</TableHead><TableHead>Role</TableHead><TableHead></TableHead></TableRow></TableHeader>
               <TableBody>
                 {staff.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.username || "—"}</TableCell>
                     <TableCell><Badge variant="secondary">{ROLE_LABEL[u.role]}</Badge></TableCell>
                     <TableCell><Button size="icon" variant="ghost" onClick={() => removeStaff(u.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                   </TableRow>
@@ -113,9 +148,9 @@ function SettingsPage() {
       <Card className="border-destructive/30 shadow-[var(--shadow-card)]">
         <CardHeader><CardTitle className="text-base text-destructive">Danger zone</CardTitle></CardHeader>
         <CardContent>
-          <p className="mb-3 text-sm text-muted-foreground">Reset all demo data back to the seeded defaults.</p>
-          <Button variant="outline" onClick={() => { resetDB(); toast.success("Demo data reset"); }}>
-            <RotateCcw className="mr-2 h-4 w-4" /> Reset demo data
+          <p className="mb-3 text-sm text-muted-foreground">Reset all data back to defaults (only Super Admin remains).</p>
+          <Button variant="outline" onClick={() => { resetDB(); toast.success("Data reset"); }}>
+            <RotateCcw className="mr-2 h-4 w-4" /> Reset data
           </Button>
         </CardContent>
       </Card>

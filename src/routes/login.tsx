@@ -14,7 +14,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +22,7 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
-      const u = login(email, password);
+      const u = login(identifier, password);
       setLoading(false);
       if (!u) { toast.error("Invalid credentials"); return; }
       toast.success(`Welcome, ${u.name}`);
@@ -50,8 +50,8 @@ function LoginPage() {
           <p className="mt-1 text-sm text-muted-foreground">Sign in to your Acadex account.</p>
           <form onSubmit={onSubmit} className="mt-8 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Label htmlFor="identifier">Email or username</Label>
+              <Input id="identifier" type="text" value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com or username" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
