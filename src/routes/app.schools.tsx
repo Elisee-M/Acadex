@@ -62,7 +62,7 @@ function SchoolsPage() {
           <p className="text-sm text-muted-foreground">Manage every school in your Acadex platform.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button className="bg-[var(--gradient-primary)]"><Plus className="mr-2 h-4 w-4" /> Add School</Button></DialogTrigger>
+          <DialogTrigger asChild><Button variant="gradient"><Plus className="mr-2 h-4 w-4" /> Add School</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create new school</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -73,7 +73,7 @@ function SchoolsPage() {
               <div><Label>Admin email</Label><Input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} /></div>
               <div><Label>Temporary password</Label><Input value={adminPass} onChange={(e) => setAdminPass(e.target.value)} placeholder="school123" /></div>
             </div>
-            <DialogFooter><Button onClick={add} className="bg-[var(--gradient-primary)]">Create</Button></DialogFooter>
+            <DialogFooter><Button onClick={add} variant="gradient">Create</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

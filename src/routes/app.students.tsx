@@ -66,14 +66,14 @@ function StudentsPage() {
         </div>
         {canEdit && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button className="bg-[var(--gradient-primary)]"><Plus className="mr-2 h-4 w-4" /> Add Student</Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="gradient"><Plus className="mr-2 h-4 w-4" /> Add Student</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Add new student</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
                 <div><Label>Class</Label><Input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="e.g. JSS 1" /></div>
               </div>
-              <DialogFooter><Button onClick={addStudent} className="bg-[var(--gradient-primary)]">Save</Button></DialogFooter>
+              <DialogFooter><Button onClick={addStudent} variant="gradient">Save</Button></DialogFooter>
             </DialogContent>
           </Dialog>
         )}

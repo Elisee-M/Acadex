@@ -85,54 +85,17 @@ type DB = {
   tracking: Tracking[];
 };
 
-const KEY = "acadex_db_v1";
+const KEY = "acadex_db_v2";
 const SESSION = "acadex_session_v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
-const today = () => new Date().toISOString();
+
 
 function seed(): DB {
-  const schoolId = "sch_demo";
-  const school: School = { id: schoolId, name: "Greenfield Academy", location: "Lagos, NG", createdAt: today() };
   const users: User[] = [
     { id: "u_super", email: "admin@acadex.com", password: "admin123", name: "Super Admin", role: "super_admin", schoolId: null },
-    { id: "u_sa", email: "principal@greenfield.edu", password: "school123", name: "Ada Okeke", role: "school_admin", schoolId },
-    { id: "u_fin", email: "finance@greenfield.edu", password: "staff123", name: "Bola Adeyemi", role: "finance_staff", schoolId },
-    { id: "u_log", email: "logistics@greenfield.edu", password: "staff123", name: "Chima Eze", role: "logistics_staff", schoolId },
-    { id: "u_aca", email: "academic@greenfield.edu", password: "staff123", name: "Dami Lawal", role: "academic_staff", schoolId },
   ];
-  const classes = ["JSS 1", "JSS 2", "SSS 1"];
-  const students: Student[] = Array.from({ length: 12 }).map((_, i) => ({
-    id: "st_" + uid(),
-    schoolId,
-    name: ["Adaeze N.","Tunde B.","Ifeoma O.","Kunle A.","Ngozi E.","Femi K.","Chinwe U.","Yusuf M.","Aisha S.","Emeka O.","Halima B.","Sade A."][i],
-    className: classes[i % classes.length],
-  }));
-  const materials: Material[] = [
-    { id: "m_fee", schoolId, name: "Tuition Fee", kind: "fee" },
-    { id: "m_book", schoolId, name: "Notebooks (set)", kind: "logistics" },
-    { id: "m_paper", schoolId, name: "A4 Paper Ream", kind: "logistics" },
-    { id: "m_net", schoolId, name: "Mosquito Net", kind: "logistics" },
-    { id: "m_bucket", schoolId, name: "Bucket", kind: "logistics" },
-    { id: "m_uniform", schoolId, name: "Uniform Check", kind: "academic" },
-  ];
-  const statuses: TrackingStatus[] = ["completed", "pending", "overdue"];
-  const tracking: Tracking[] = [];
-  students.forEach((s, si) => {
-    materials.forEach((m, mi) => {
-      const status = statuses[(si + mi) % 3];
-      tracking.push({
-        id: "tr_" + uid(),
-        schoolId,
-        studentId: s.id,
-        materialId: m.id,
-        status,
-        promisedDate: status === "pending" ? new Date(Date.now() + 86400000 * ((si % 5) + 1)).toISOString() : null,
-        updatedAt: today(),
-      });
-    });
-  });
-  return { users, schools: [school], students, materials, tracking };
+  return { users, schools: [], students: [], materials: [], tracking: [] };
 }
 
 export function loadDB(): DB {

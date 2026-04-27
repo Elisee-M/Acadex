@@ -60,7 +60,7 @@ function MaterialsPage() {
         </div>
         {canEdit && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button className="bg-[var(--gradient-primary)]"><Plus className="mr-2 h-4 w-4" /> Add Material</Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="gradient"><Plus className="mr-2 h-4 w-4" /> Add Material</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Add material</DialogTitle></DialogHeader>
               <div className="space-y-3">
@@ -77,7 +77,7 @@ function MaterialsPage() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter><Button onClick={add} className="bg-[var(--gradient-primary)]">Save</Button></DialogFooter>
+              <DialogFooter><Button onClick={add} variant="gradient">Save</Button></DialogFooter>
             </DialogContent>
           </Dialog>
         )}

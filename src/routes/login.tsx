@@ -14,8 +14,8 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@acadex.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   function onSubmit(e: React.FormEvent) {
@@ -57,20 +57,10 @@ function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <Button type="submit" disabled={loading} className="w-full bg-[var(--gradient-primary)] shadow-[var(--shadow-elegant)]">
+            <Button type="submit" disabled={loading} variant="gradient" className="w-full">
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
-          <div className="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-xs text-muted-foreground">
-            <div className="font-semibold text-foreground">Demo accounts</div>
-            <ul className="mt-2 space-y-1">
-              <li>Super: admin@acadex.com / admin123</li>
-              <li>School Admin: principal@greenfield.edu / school123</li>
-              <li>Finance: finance@greenfield.edu / staff123</li>
-              <li>Logistics: logistics@greenfield.edu / staff123</li>
-              <li>Academic: academic@greenfield.edu / staff123</li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>

@@ -68,7 +68,7 @@ function SettingsPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Staff accounts</CardTitle>
             <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild><Button size="sm" className="bg-[var(--gradient-primary)]"><Plus className="mr-2 h-4 w-4" /> Add Staff</Button></DialogTrigger>
+              <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="mr-2 h-4 w-4" /> Add Staff</Button></DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Add staff member</DialogTitle></DialogHeader>
                 <div className="space-y-3">
@@ -88,7 +88,7 @@ function SettingsPage() {
                     </Select>
                   </div>
                 </div>
-                <DialogFooter><Button onClick={addStaff} className="bg-[var(--gradient-primary)]">Add</Button></DialogFooter>
+                <DialogFooter><Button onClick={addStaff} variant="gradient">Add</Button></DialogFooter>
               </DialogContent>
             </Dialog>
           </CardHeader>

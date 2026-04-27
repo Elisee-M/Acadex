@@ -156,3 +156,17 @@
     color: var(--color-foreground);
   }
 }
+
+@layer utilities {
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary);
+    background-color: var(--primary);
+  }
+  .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+    background-color: var(--primary-deep);
+  }
+  .bg-gradient-subtle {
+    background-image: var(--gradient-subtle);
+  }
+}
