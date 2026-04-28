@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Eye } from "lucide-react";
 import { StatusBadge } from "./app.dashboard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -38,6 +38,7 @@ function StudentsPage() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [classId, setClassId] = useState<string>("");
+  const [viewStudent, setViewStudent] = useState<string | null>(null);
 
   function addStudent() {
     if (!name.trim()) return toast.error("Enter the student name");
@@ -69,11 +70,7 @@ function StudentsPage() {
     saveDB(next);
   }
 
-  function updateStatus(studentId: string, materialId: string, status: "completed" | "pending" | "overdue") {
-    const next = loadDB();
-    const t = next.tracking.find((x) => x.studentId === studentId && x.materialId === materialId);
-    if (t) { t.status = status; t.updatedAt = new Date().toISOString(); saveDB(next); }
-  }
+
 
   return (
     <div className="space-y-6">
@@ -132,39 +129,36 @@ function StudentsPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Class</TableHead>
-                {materials.map((m) => <TableHead key={m.id}>{m.name}</TableHead>)}
-                {canEdit && <TableHead className="w-12"></TableHead>}
+                <TableHead>Materials summary</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {students.length === 0 && (
-                <TableRow><TableCell colSpan={2 + materials.length + (canEdit ? 1 : 0)} className="text-center text-sm text-muted-foreground py-8">No students yet.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">No students yet.</TableCell></TableRow>
               )}
               {students.map((s) => {
                 const cls = db.classes.find((c) => c.id === s.classId);
+                const studentTracking = db.tracking.filter((t) => t.studentId === s.id);
+                const done = studentTracking.filter((t) => t.status === "completed").length;
+                const total = studentTracking.length;
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell>{cls ? classDisplayName(cls) : (s.className || "—")}</TableCell>
-                    {materials.map((m) => {
-                      const t = db.tracking.find((x) => x.studentId === s.id && x.materialId === m.id);
-                      if (!t) return <TableCell key={m.id}>—</TableCell>;
-                      return (
-                        <TableCell key={m.id}>
-                          {canEdit ? (
-                            <Select value={t.status} onValueChange={(v) => updateStatus(s.id, m.id, v as any)}>
-                              <SelectTrigger className="h-8 w-[120px] border-none p-0 shadow-none [&>svg]:hidden"><SelectValue><StatusBadge status={t.status} /></SelectValue></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="overdue">Overdue</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : <StatusBadge status={t.status} />}
-                        </TableCell>
-                      );
-                    })}
-                    {canEdit && <TableCell><Button size="icon" variant="ghost" onClick={() => removeStudent(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>}
+                    <TableCell className="text-sm text-muted-foreground">{done} / {total} completed</TableCell>
+                    <TableCell className="text-right">
+                      <div className="inline-flex gap-1">
+                        <Button size="sm" variant="outline" onClick={() => setViewStudent(s.id)}>
+                          <Eye className="mr-1 h-3.5 w-3.5" /> View
+                        </Button>
+                        {canEdit && (
+                          <Button size="icon" variant="ghost" onClick={() => removeStudent(s.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -172,6 +166,61 @@ function StudentsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <StudentDetailDialog studentId={viewStudent} onClose={() => setViewStudent(null)} />
     </div>
+  );
+}
+
+function StudentDetailDialog({ studentId, onClose }: { studentId: string | null; onClose: () => void }) {
+  const db = useDB();
+  const student = studentId ? db.students.find((s) => s.id === studentId) : null;
+  const cls = student ? db.classes.find((c) => c.id === student.classId) : null;
+  const rows = student
+    ? db.materials.filter((m) => m.schoolId === student.schoolId).map((m) => {
+        const t = db.tracking.find((x) => x.studentId === student.id && x.materialId === m.id);
+        return { material: m, tracking: t };
+      })
+    : [];
+  return (
+    <Dialog open={!!studentId} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{student?.name} — Materials</DialogTitle>
+        </DialogHeader>
+        {student && (
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Class: <span className="font-medium text-foreground">{cls ? classDisplayName(cls) : (student.className || "—")}</span>
+            </div>
+            <div className="rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Material</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Promised date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">No materials defined.</TableCell></TableRow>
+                  )}
+                  {rows.map(({ material, tracking }) => (
+                    <TableRow key={material.id}>
+                      <TableCell className="font-medium">{material.name}</TableCell>
+                      <TableCell className="capitalize">{material.kind}</TableCell>
+                      <TableCell><StatusBadge status={tracking?.status ?? "pending"} /></TableCell>
+                      <TableCell>{tracking?.promisedDate ? new Date(tracking.promisedDate).toLocaleDateString() : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

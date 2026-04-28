@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppTrackingRouteImport } from './routes/app.tracking'
 import { Route as AppStudentsRouteImport } from './routes/app.students'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppSchoolsRouteImport } from './routes/app.schools'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppTrackingRoute = AppTrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppStudentsRoute = AppStudentsRouteImport.update({
   id: '/students',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/app/schools': typeof AppSchoolsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/students': typeof AppStudentsRoute
+  '/app/tracking': typeof AppTrackingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/app/schools': typeof AppSchoolsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/students': typeof AppStudentsRoute
+  '/app/tracking': typeof AppTrackingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/app/schools': typeof AppSchoolsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/students': typeof AppStudentsRoute
+  '/app/tracking': typeof AppTrackingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/app/schools'
     | '/app/settings'
     | '/app/students'
+    | '/app/tracking'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/app/schools'
     | '/app/settings'
     | '/app/students'
+    | '/app/tracking'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/app/schools'
     | '/app/settings'
     | '/app/students'
+    | '/app/tracking'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -175,6 +187,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/tracking': {
+      id: '/app/tracking'
+      path: '/tracking'
+      fullPath: '/app/tracking'
+      preLoaderRoute: typeof AppTrackingRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/students': {
       id: '/app/students'
@@ -236,6 +255,7 @@ interface AppRouteChildren {
   AppSchoolsRoute: typeof AppSchoolsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStudentsRoute: typeof AppStudentsRoute
+  AppTrackingRoute: typeof AppTrackingRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -246,6 +266,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSchoolsRoute: AppSchoolsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStudentsRoute: AppStudentsRoute,
+  AppTrackingRoute: AppTrackingRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

@@ -23,7 +23,14 @@ export const PERMISSIONS: Record<Role, Permission[]> = {
   school_admin: ["manage_staff", "manage_students", "manage_classes", "manage_materials", "manage_fees", "manage_logistics", "view_reports"],
   finance_staff: ["manage_fees", "view_reports"],
   logistics_staff: ["manage_logistics", "view_reports"],
-  academic_staff: ["manage_students", "manage_classes", "view_reports"],
+  academic_staff: ["view_reports"],
+};
+
+// Map a staff role to the material kind they are responsible for checking
+export const ROLE_TO_MATERIAL_KIND: Partial<Record<Role, "fee" | "logistics" | "academic">> = {
+  finance_staff: "fee",
+  logistics_staff: "logistics",
+  academic_staff: "academic",
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
