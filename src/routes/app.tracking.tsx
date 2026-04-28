@@ -1,13 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, getSession, classDisplayName, ROLE_TO_MATERIAL_KIND, type MaterialKind, type TrackingStatus } from "@/lib/store";
+import { loadDB, saveDB, getSession, classDisplayName, type TrackingStatus } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ClipboardCheck, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { StatusBadge } from "./app.dashboard";
 import { toast } from "sonner";
@@ -23,26 +23,19 @@ export const Route = createFileRoute("/app/tracking")({
   component: TrackingPage,
 });
 
-const KIND_LABEL: Record<MaterialKind, string> = { fee: "Fee", logistics: "Logistics", academic: "Academic" };
-
 function TrackingPage() {
   const db = useDB();
   const user = useSession()!;
 
-  // Determine which material kinds this user can check
-  const allowedKinds: MaterialKind[] = useMemo(() => {
-    if (user.role === "super_admin" || user.role === "school_admin") return ["fee", "logistics", "academic"];
-    const k = ROLE_TO_MATERIAL_KIND[user.role];
-    return k ? [k] : [];
-  }, [user.role]);
-
   const schoolFilter = (id: string | undefined) =>
     user.role === "super_admin" ? true : id === user.schoolId;
 
-  // Materials this user is responsible for
+  // Materials this user can check:
+  // - super_admin / school_admin: all in scope
+  // - staff: only those assigned to them
   const myMaterials = db.materials
     .filter((m) => schoolFilter(m.schoolId))
-    .filter((m) => allowedKinds.includes(m.kind));
+    .filter((m) => user.role === "super_admin" || user.role === "school_admin" ? true : m.assignedStaffId === user.id);
 
   const [materialId, setMaterialId] = useState<string>("");
   const activeMaterial = myMaterials.find((m) => m.id === materialId) ?? myMaterials[0];
@@ -87,14 +80,6 @@ function TrackingPage() {
     toast.success("Promised date saved");
   }
 
-  if (allowedKinds.length === 0) {
-    return (
-      <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-        Your role has no materials to check.
-      </CardContent></Card>
-    );
-  }
-
   if (myMaterials.length === 0) {
     return (
       <div className="space-y-6">
@@ -103,7 +88,7 @@ function TrackingPage() {
           <p className="text-sm text-muted-foreground">Check students for the materials you are responsible for.</p>
         </div>
         <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-          No materials of your type ({allowedKinds.map((k) => KIND_LABEL[k]).join(", ")}) exist yet.
+          No materials are assigned to you yet.
         </CardContent></Card>
       </div>
     );
@@ -117,6 +102,13 @@ function TrackingPage() {
     }).length,
     overdue: students.filter((s) => db.tracking.find((t) => t.studentId === s.id && t.materialId === activeMaterial?.id)?.status === "overdue").length,
   };
+
+  function staffLabel(id: string): string {
+    const u = db.users.find((x) => x.id === id);
+    if (!u) return "—";
+    const r = db.staffRoles.find((r) => r.id === u.staffRoleId);
+    return r ? `${u.name} (${r.name})` : u.name;
+  }
 
   return (
     <div className="space-y-6">
@@ -136,7 +128,7 @@ function TrackingPage() {
             <SelectTrigger><SelectValue placeholder="Choose material" /></SelectTrigger>
             <SelectContent>
               {myMaterials.map((m) => (
-                <SelectItem key={m.id} value={m.id}>{m.name} — {KIND_LABEL[m.kind]}</SelectItem>
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -162,7 +154,7 @@ function TrackingPage() {
       <Card className="shadow-[var(--shadow-card)]">
         <CardHeader>
           <CardTitle className="text-base">
-            {activeMaterial ? <>Checking: <span className="text-primary">{activeMaterial.name}</span> <Badge variant="secondary" className="ml-2">{KIND_LABEL[activeMaterial.kind]}</Badge></> : "Students"}
+            {activeMaterial ? <>Checking: <span className="text-primary">{activeMaterial.name}</span> <Badge variant="secondary" className="ml-2">{staffLabel(activeMaterial.assignedStaffId)}</Badge></> : "Students"}
           </CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">

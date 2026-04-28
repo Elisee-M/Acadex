@@ -198,7 +198,7 @@ function StudentDetailDialog({ studentId, onClose }: { studentId: string | null;
                 <TableHeader>
                   <TableRow>
                     <TableHead>Material</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Checked by</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Promised date</TableHead>
                   </TableRow>
@@ -207,14 +207,18 @@ function StudentDetailDialog({ studentId, onClose }: { studentId: string | null;
                   {rows.length === 0 && (
                     <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">No materials defined.</TableCell></TableRow>
                   )}
-                  {rows.map(({ material, tracking }) => (
+                  {rows.map(({ material, tracking }) => {
+                    const staff = db.users.find((u) => u.id === material.assignedStaffId);
+                    const role = staff ? db.staffRoles.find((r) => r.id === staff.staffRoleId) : null;
+                    return (
                     <TableRow key={material.id}>
                       <TableCell className="font-medium">{material.name}</TableCell>
-                      <TableCell className="capitalize">{material.kind}</TableCell>
+                      <TableCell>{staff ? `${staff.name}${role ? ` (${role.name})` : ""}` : "—"}</TableCell>
                       <TableCell><StatusBadge status={tracking?.status ?? "pending"} /></TableCell>
                       <TableCell>{tracking?.promisedDate ? new Date(tracking.promisedDate).toLocaleDateString() : "—"}</TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

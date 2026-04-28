@@ -1,14 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, uid, getSession, type MaterialKind, type MaterialCategory } from "@/lib/store";
+import { loadDB, saveDB, uid, getSession, type StaffRole } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Plus, Trash2, Pencil, Tag } from "lucide-react";
 import { toast } from "sonner";
@@ -22,101 +20,75 @@ export const Route = createFileRoute("/app/categories")({
         throw redirect({ to: "/app/dashboard" });
     }
   },
-  head: () => ({ meta: [{ title: "Material Categories — Acadex" }] }),
-  component: CategoriesPage,
+  head: () => ({ meta: [{ title: "Staff Roles — Acadex" }] }),
+  component: StaffRolesPage,
 });
 
-const KIND_LABEL: Record<MaterialKind, string> = { fee: "Fee", logistics: "Logistics", academic: "Academic" };
-
-function CategoriesPage() {
+function StaffRolesPage() {
   const db = useDB();
   const user = useSession()!;
   const schoolId = user.schoolId ?? db.schools[0]?.id;
 
-  const categories = db.categories.filter((c) => user.role === "super_admin" || c.schoolId === user.schoolId);
+  const roles = db.staffRoles.filter((r) => user.role === "super_admin" || r.schoolId === user.schoolId);
 
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<MaterialCategory | null>(null);
+  const [editing, setEditing] = useState<StaffRole | null>(null);
   const [name, setName] = useState("");
-  const [kind, setKind] = useState<MaterialKind>("logistics");
 
-  function openCreate() {
-    setEditing(null); setName(""); setKind("logistics"); setOpen(true);
-  }
-  function openEdit(c: MaterialCategory) {
-    setEditing(c); setName(c.name); setKind(c.kind); setOpen(true);
-  }
+  function openCreate() { setEditing(null); setName(""); setOpen(true); }
+  function openEdit(r: StaffRole) { setEditing(r); setName(r.name); setOpen(true); }
 
   function save() {
-    if (!name.trim()) return toast.error("Enter a category name");
+    if (!name.trim()) return toast.error("Enter a role name");
     if (!schoolId) return toast.error("No school context");
     const next = loadDB();
+    const trimmed = name.trim();
     if (editing) {
-      const c = next.categories.find((x) => x.id === editing.id);
-      if (!c) return;
-      c.name = name.trim();
-      c.kind = kind;
-      // propagate kind to its materials so staff routing stays correct
-      next.materials.filter((m) => m.categoryId === c.id).forEach((m) => { m.kind = kind; });
+      const r = next.staffRoles.find((x) => x.id === editing.id);
+      if (!r) return;
+      r.name = trimmed;
       saveDB(next);
-      toast.success("Category updated");
+      toast.success("Role updated");
     } else {
-      const dup = next.categories.find((c) => c.schoolId === schoolId && c.name.toLowerCase() === name.trim().toLowerCase());
-      if (dup) return toast.error("A category with that name already exists");
-      next.categories.push({
-        id: "cat_" + uid(),
-        schoolId: schoolId!,
-        name: name.trim(),
-        kind,
-        createdAt: new Date().toISOString(),
-      });
+      const dup = next.staffRoles.find((r) => r.schoolId === schoolId && r.name.toLowerCase() === trimmed.toLowerCase());
+      if (dup) return toast.error("A role with that name already exists");
+      next.staffRoles.push({ id: "sr_" + uid(), schoolId: schoolId!, name: trimmed, createdAt: new Date().toISOString() });
       saveDB(next);
-      toast.success("Category created");
+      toast.success("Role created");
     }
     setOpen(false);
   }
 
-  function remove(c: MaterialCategory) {
-    const used = loadDB().materials.some((m) => m.categoryId === c.id);
-    if (used) return toast.error("Cannot delete: materials are using this category");
-    const next = loadDB();
-    next.categories = next.categories.filter((x) => x.id !== c.id);
-    saveDB(next);
-    toast.success("Category deleted");
+  function remove(r: StaffRole) {
+    const db2 = loadDB();
+    const usedByStaff = db2.users.some((u) => u.staffRoleId === r.id);
+    if (usedByStaff) return toast.error("Cannot delete: staff members are assigned to this role");
+    db2.staffRoles = db2.staffRoles.filter((x) => x.id !== r.id);
+    saveDB(db2);
+    toast.success("Role deleted");
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Material Categories</h1>
+          <h1 className="text-2xl font-bold text-foreground">Staff Roles</h1>
           <p className="text-sm text-muted-foreground">
-            Define the categories (types) used when creating materials. Each category is checked by the staff role you assign.
+            Define the roles staff members can hold (e.g. Finance, Logistics, Dean). Assign one of these when adding a staff member.
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button variant="gradient" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Add Category
+              <Plus className="mr-2 h-4 w-4" /> Add Role
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>{editing ? "Edit category" : "Add category"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? "Edit role" : "Add role"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div>
-                <Label>Category name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Uniform, Tuition, Books" />
-              </div>
-              <div>
-                <Label>Checked by (staff role)</Label>
-                <Select value={kind} onValueChange={(v) => setKind(v as MaterialKind)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fee">Finance Staff (Fee)</SelectItem>
-                    <SelectItem value="logistics">Logistics Staff</SelectItem>
-                    <SelectItem value="academic">Academic Staff</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Role name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Finance, Logistics, Dean" />
               </div>
             </div>
             <DialogFooter><Button onClick={save} variant="gradient">Save</Button></DialogFooter>
@@ -125,36 +97,34 @@ function CategoriesPage() {
       </div>
 
       <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Tag className="h-4 w-4" /> All categories</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Tag className="h-4 w-4" /> All roles</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Checked by</TableHead>
-                <TableHead>Materials</TableHead>
+                <TableHead>Staff members</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {categories.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
-                  No categories yet. Create one to use as a material type.
+              {roles.length === 0 && (
+                <TableRow><TableCell colSpan={3} className="text-center text-sm text-muted-foreground py-8">
+                  No roles yet. Create one to start adding staff.
                 </TableCell></TableRow>
               )}
-              {categories.map((c) => {
-                const count = db.materials.filter((m) => m.categoryId === c.id).length;
+              {roles.map((r) => {
+                const count = db.users.filter((u) => u.staffRoleId === r.id).length;
                 return (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{KIND_LABEL[c.kind]}</Badge></TableCell>
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell>{count}</TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex gap-1">
-                        <Button size="sm" variant="outline" onClick={() => openEdit(c)}>
+                        <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
                           <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => remove(c)}>
+                        <Button size="icon" variant="ghost" onClick={() => remove(r)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>

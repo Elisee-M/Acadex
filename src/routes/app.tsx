@@ -2,7 +2,8 @@ import { createFileRoute, Outlet, Link, useNavigate, useLocation, redirect } fro
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-acadex";
-import { setSession, ROLE_LABEL, hasPermission } from "@/lib/store";
+import { setSession, hasPermission, userRoleLabel } from "@/lib/store";
+import { useDB } from "@/hooks/use-acadex";
 import { LayoutDashboard, Users, Package, FileBarChart, Settings, Building2, LogOut, Menu, X, GraduationCap, ClipboardCheck, Tag } from "lucide-react";
 import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
@@ -22,7 +23,7 @@ const NAV = [
   { to: "/app/schools", label: "Schools", icon: Building2, perm: "manage_schools" },
   { to: "/app/students", label: "Students", icon: Users, perm: "manage_students" },
   { to: "/app/classes", label: "Classes", icon: GraduationCap, perm: "manage_classes" },
-  { to: "/app/categories", label: "Categories", icon: Tag, perm: "manage_materials" },
+  { to: "/app/categories", label: "Staff Roles", icon: Tag, perm: "manage_roles" },
   { to: "/app/materials", label: "Materials", icon: Package, perm: "manage_materials" },
   { to: "/app/tracking", label: "Tracking", icon: ClipboardCheck, perm: null },
   { to: "/app/reports", label: "Reports", icon: FileBarChart, perm: "view_reports" },
@@ -31,6 +32,7 @@ const NAV = [
 
 function AppShell() {
   const user = useSession();
+  const db = useDB();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -67,7 +69,7 @@ function AppShell() {
         <div className="absolute inset-x-0 bottom-0 border-t border-border p-3">
           <div className="rounded-lg bg-muted/50 p-3">
             <div className="text-sm font-semibold text-foreground">{user.name}</div>
-            <div className="text-xs text-muted-foreground">{ROLE_LABEL[user.role]}</div>
+            <div className="text-xs text-muted-foreground">{userRoleLabel(user, db)}</div>
             <Button variant="outline" size="sm" className="mt-3 w-full" onClick={logout}>
               <LogOut className="mr-2 h-3 w-3" /> Sign out
             </Button>
@@ -80,7 +82,7 @@ function AppShell() {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur">
           <button className="lg:hidden" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="hidden sm:inline">{ROLE_LABEL[user.role]}</span>
+            <span className="hidden sm:inline">{userRoleLabel(user, db)}</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
               {user.name.split(" ").map(s=>s[0]).slice(0,2).join("")}
             </div>

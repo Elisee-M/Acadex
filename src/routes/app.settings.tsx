@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, uid, hasPermission, ROLE_LABEL, type Role, changePassword } from "@/lib/store";
+import { loadDB, saveDB, uid, hasPermission, ROLE_LABEL, userRoleLabel, type Role, changePassword } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -13,24 +13,38 @@ import { useState } from "react";
 import { Plus, Trash2, RotateCcw, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { resetDB } from "@/lib/store";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Acadex" }] }),
   component: SettingsPage,
 });
 
+// Special sentinel for the system "School Admin" choice (only visible to super_admin)
+const SCHOOL_ADMIN_OPTION = "__school_admin__";
+
 function SettingsPage() {
   const db = useDB();
   const user = useSession()!;
   const canManageStaff = hasPermission(user, "manage_staff");
-  const staff = db.users.filter((u) => user.role === "super_admin" ? u.role !== "super_admin" : u.schoolId === user.schoolId && u.id !== user.id);
+  const staff = db.users.filter((u) =>
+    user.role === "super_admin"
+      ? u.role !== "super_admin"
+      : u.schoolId === user.schoolId && u.id !== user.id
+  );
+
+  // Custom staff roles available in this school
+  const availableRoles = db.staffRoles.filter((r) =>
+    user.role === "super_admin" ? true : r.schoolId === user.schoolId
+  );
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("finance_staff");
+  // Selected option: either SCHOOL_ADMIN_OPTION or a staffRoleId
+  const [roleSelection, setRoleSelection] = useState<string>("");
 
   // password change state
   const [curPwd, setCurPwd] = useState("");
@@ -39,14 +53,34 @@ function SettingsPage() {
 
   function addStaff() {
     if (!name || !email || !password) return toast.error("Fill all required fields");
+    if (!roleSelection) return toast.error("Select a role");
     const next = loadDB();
     const emailLower = email.toLowerCase();
     const usernameLower = username.trim().toLowerCase();
     if (next.users.some((u) => u.email.toLowerCase() === emailLower)) return toast.error("Email already exists");
     if (usernameLower && next.users.some((u) => (u.username ?? "").toLowerCase() === usernameLower)) return toast.error("Username already taken");
-    next.users.push({ id: "u_" + uid(), name, email, username: username.trim() || undefined, password, role, schoolId: user.schoolId });
+
+    let role: Role;
+    let staffRoleId: string | null = null;
+    if (roleSelection === SCHOOL_ADMIN_OPTION) {
+      role = "school_admin";
+    } else {
+      role = "staff";
+      staffRoleId = roleSelection;
+    }
+
+    next.users.push({
+      id: "u_" + uid(),
+      name,
+      email,
+      username: username.trim() || undefined,
+      password,
+      role,
+      schoolId: user.schoolId,
+      staffRoleId,
+    });
     saveDB(next);
-    setOpen(false); setName(""); setEmail(""); setUsername(""); setPassword("");
+    setOpen(false); setName(""); setEmail(""); setUsername(""); setPassword(""); setRoleSelection("");
     toast.success("Staff added");
   }
 
@@ -78,7 +112,7 @@ function SettingsPage() {
           <div><Label>Name</Label><Input value={user.name} disabled /></div>
           <div><Label>Email</Label><Input value={user.email} disabled /></div>
           <div><Label>Username</Label><Input value={user.username || "—"} disabled /></div>
-          <div><Label>Role</Label><Input value={ROLE_LABEL[user.role]} disabled /></div>
+          <div><Label>Role</Label><Input value={userRoleLabel(user, db)} disabled /></div>
         </CardContent>
       </Card>
 
@@ -104,25 +138,33 @@ function SettingsPage() {
               <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="mr-2 h-4 w-4" /> Add Staff</Button></DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Add staff member</DialogTitle></DialogHeader>
-                <div className="space-y-3">
-                  <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-                  <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-                  <div><Label>Username (optional)</Label><Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="for sign-in" /></div>
-                  <div><Label>Password</Label><Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-                  <div>
-                    <Label>Role</Label>
-                    <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {user.role === "super_admin" && <SelectItem value="school_admin">School Admin</SelectItem>}
-                        <SelectItem value="finance_staff">Finance Staff</SelectItem>
-                        <SelectItem value="logistics_staff">Logistics Staff</SelectItem>
-                        <SelectItem value="academic_staff">Academic Staff</SelectItem>
-                      </SelectContent>
-                    </Select>
+                {availableRoles.length === 0 && user.role !== "super_admin" ? (
+                  <div className="text-sm text-muted-foreground">
+                    No staff roles defined yet. <Link to="/app/categories" className="text-primary underline">Create a role</Link> first (e.g. Finance, Logistics) so you can assign one.
                   </div>
-                </div>
-                <DialogFooter><Button onClick={addStaff} variant="gradient">Add</Button></DialogFooter>
+                ) : (
+                  <div className="space-y-3">
+                    <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+                    <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+                    <div><Label>Username (optional)</Label><Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="for sign-in" /></div>
+                    <div><Label>Password</Label><Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+                    <div>
+                      <Label>Role</Label>
+                      <Select value={roleSelection} onValueChange={setRoleSelection}>
+                        <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                        <SelectContent>
+                          {user.role === "super_admin" && <SelectItem value={SCHOOL_ADMIN_OPTION}>School Admin</SelectItem>}
+                          {availableRoles.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button onClick={addStaff} variant="gradient" disabled={availableRoles.length === 0 && user.role !== "super_admin"}>Add</Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </CardHeader>
@@ -135,7 +177,11 @@ function SettingsPage() {
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell>{u.email}</TableCell>
                     <TableCell>{u.username || "—"}</TableCell>
-                    <TableCell><Badge variant="secondary">{ROLE_LABEL[u.role]}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {u.role === "school_admin" ? ROLE_LABEL.school_admin : userRoleLabel(u, db)}
+                      </Badge>
+                    </TableCell>
                     <TableCell><Button size="icon" variant="ghost" onClick={() => removeStaff(u.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                   </TableRow>
                 ))}

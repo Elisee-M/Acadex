@@ -1,12 +1,9 @@
 // Local-first demo store. Persists in localStorage.
 // Multi-tenant: data scoped by schoolId. Super admin sees all.
 
-export type Role =
-  | "super_admin"
-  | "school_admin"
-  | "finance_staff"
-  | "logistics_staff"
-  | "academic_staff";
+// System roles only. Custom staff roles (e.g. "Finance", "Logistics") live in
+// the StaffRole table and are referenced via user.staffRoleId.
+export type Role = "super_admin" | "school_admin" | "staff";
 
 export type Permission =
   | "manage_schools"
@@ -14,31 +11,19 @@ export type Permission =
   | "manage_students"
   | "manage_classes"
   | "manage_materials"
-  | "manage_fees"
-  | "manage_logistics"
+  | "manage_roles"
   | "view_reports";
 
 export const PERMISSIONS: Record<Role, Permission[]> = {
-  super_admin: ["manage_schools", "manage_staff", "manage_students", "manage_classes", "manage_materials", "manage_fees", "manage_logistics", "view_reports"],
-  school_admin: ["manage_staff", "manage_students", "manage_classes", "manage_materials", "manage_fees", "manage_logistics", "view_reports"],
-  finance_staff: ["manage_fees", "view_reports"],
-  logistics_staff: ["manage_logistics", "view_reports"],
-  academic_staff: ["view_reports"],
-};
-
-// Map a staff role to the material kind they are responsible for checking
-export const ROLE_TO_MATERIAL_KIND: Partial<Record<Role, "fee" | "logistics" | "academic">> = {
-  finance_staff: "fee",
-  logistics_staff: "logistics",
-  academic_staff: "academic",
+  super_admin: ["manage_schools", "manage_staff", "manage_students", "manage_classes", "manage_materials", "manage_roles", "view_reports"],
+  school_admin: ["manage_staff", "manage_students", "manage_classes", "manage_materials", "manage_roles", "view_reports"],
+  staff: ["view_reports"],
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super Admin",
   school_admin: "School Admin",
-  finance_staff: "Finance Staff",
-  logistics_staff: "Logistics Staff",
-  academic_staff: "Academic Staff",
+  staff: "Staff",
 };
 
 export type User = {
@@ -48,13 +33,22 @@ export type User = {
   password: string;
   name: string;
   role: Role;
-  schoolId: string | null; // null for super admin
+  schoolId: string | null;     // null for super admin
+  staffRoleId?: string | null; // ref to StaffRole, only when role === "staff"
 };
 
 export type School = {
   id: string;
   name: string;
   location: string;
+  createdAt: string;
+};
+
+// Custom staff role created by a school admin (e.g. "Finance", "Logistics", "Dean")
+export type StaffRole = {
+  id: string;
+  schoolId: string;
+  name: string;
   createdAt: string;
 };
 
@@ -65,8 +59,8 @@ export type SchoolClass = {
   id: string;
   schoolId: string;
   level: ClassLevel;
-  trade?: string | null;        // full trade name e.g. "Computer System and Architecture" (only for L*)
-  abbreviation?: string | null; // short e.g. "CSA"
+  trade?: string | null;
+  abbreviation?: string | null;
   createdAt: string;
 };
 
@@ -80,26 +74,15 @@ export type Student = {
   id: string;
   schoolId: string;
   name: string;
-  classId: string;       // reference to SchoolClass
-  className?: string;    // legacy, kept for backward compat
-};
-
-export type MaterialKind = "fee" | "logistics" | "academic";
-
-export type MaterialCategory = {
-  id: string;
-  schoolId: string;
-  name: string;          // custom display name e.g. "Uniform", "Tuition", "Books"
-  kind: MaterialKind;    // which staff role checks materials in this category
-  createdAt: string;
+  classId: string;
+  className?: string;
 };
 
 export type Material = {
   id: string;
   schoolId: string;
   name: string;
-  kind: MaterialKind;       // mirrors category.kind for fast filtering
-  categoryId?: string | null;
+  assignedStaffId: string; // which staff user is responsible for checking this material
 };
 
 export type TrackingStatus = "completed" | "pending" | "overdue";
@@ -117,24 +100,23 @@ export type Tracking = {
 type DB = {
   users: User[];
   schools: School[];
+  staffRoles: StaffRole[];
   classes: SchoolClass[];
   students: Student[];
-  categories: MaterialCategory[];
   materials: Material[];
   tracking: Tracking[];
 };
 
-const KEY = "acadex_db_v4";
+const KEY = "acadex_db_v5";
 const SESSION = "acadex_session_v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
-
 
 function seed(): DB {
   const users: User[] = [
     { id: "u_super", email: "admin@acadex.com", username: "admin", password: "admin123", name: "Super Admin", role: "super_admin", schoolId: null },
   ];
-  return { users, schools: [], classes: [], students: [], categories: [], materials: [], tracking: [] };
+  return { users, schools: [], staffRoles: [], classes: [], students: [], materials: [], tracking: [] };
 }
 
 export function loadDB(): DB {
@@ -148,7 +130,7 @@ export function loadDB(): DB {
     }
     const parsed = JSON.parse(raw) as DB;
     if (!parsed.classes) parsed.classes = [];
-    if (!parsed.categories) parsed.categories = [];
+    if (!parsed.staffRoles) parsed.staffRoles = [];
     return parsed;
   } catch {
     const s = seed();
@@ -180,7 +162,6 @@ export function setSession(u: User | null) {
   window.dispatchEvent(new Event("acadex:session"));
 }
 
-// Login accepts either email or username
 export function login(identifier: string, password: string): User | null {
   const db = loadDB();
   const id = identifier.trim().toLowerCase();
@@ -200,7 +181,6 @@ export function changePassword(userId: string, currentPassword: string, newPassw
   if (!newPassword || newPassword.length < 6) return { ok: false, error: "New password must be at least 6 characters" };
   u.password = newPassword;
   saveDB(db);
-  // refresh session if it's the current user
   const sess = getSession();
   if (sess && sess.id === userId) setSession(u);
   return { ok: true };
@@ -209,6 +189,15 @@ export function changePassword(userId: string, currentPassword: string, newPassw
 export function hasPermission(user: User | null, perm: Permission): boolean {
   if (!user) return false;
   return PERMISSIONS[user.role].includes(perm);
+}
+
+// Display the effective role label of a user (custom staff role name if any).
+export function userRoleLabel(u: User, db: Pick<DB, "staffRoles">): string {
+  if (u.role === "staff") {
+    const r = db.staffRoles.find((x) => x.id === u.staffRoleId);
+    return r ? r.name : "Staff";
+  }
+  return ROLE_LABEL[u.role];
 }
 
 export { uid };
