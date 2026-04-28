@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Plus, Trash2, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/materials")({
   head: () => ({ meta: [{ title: "Materials — Acadex" }] }),
@@ -26,21 +27,25 @@ function MaterialsPage() {
   const canEdit = hasPermission(user, "manage_materials") || hasPermission(user, "manage_fees") || hasPermission(user, "manage_logistics");
   const schoolId = user.schoolId ?? db.schools[0]?.id;
   const materials = db.materials.filter((m) => user.role === "super_admin" || m.schoolId === user.schoolId);
+  const categories = db.categories.filter((c) => user.role === "super_admin" || c.schoolId === user.schoolId);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [kind, setKind] = useState<MaterialKind>("logistics");
+  const [categoryId, setCategoryId] = useState<string>("");
 
   function add() {
     if (!name) return toast.error("Enter material name");
+    if (!categoryId) return toast.error("Select a category");
+    const cat = categories.find((c) => c.id === categoryId);
+    if (!cat) return toast.error("Category not found");
     const next = loadDB();
     const id = "m_" + uid();
-    next.materials.push({ id, schoolId: schoolId!, name, kind });
-    next.students.filter((s) => s.schoolId === schoolId).forEach((s) => {
-      next.tracking.push({ id: "tr_" + uid(), schoolId: schoolId!, studentId: s.id, materialId: id, status: "pending", promisedDate: null, updatedAt: new Date().toISOString() });
+    next.materials.push({ id, schoolId: cat.schoolId, name, kind: cat.kind, categoryId: cat.id });
+    next.students.filter((s) => s.schoolId === cat.schoolId).forEach((s) => {
+      next.tracking.push({ id: "tr_" + uid(), schoolId: cat.schoolId, studentId: s.id, materialId: id, status: "pending", promisedDate: null, updatedAt: new Date().toISOString() });
     });
     saveDB(next);
-    setOpen(false); setName("");
+    setOpen(false); setName(""); setCategoryId("");
     toast.success("Material added");
   }
 
@@ -63,21 +68,27 @@ function MaterialsPage() {
             <DialogTrigger asChild><Button variant="gradient"><Plus className="mr-2 h-4 w-4" /> Add Material</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Add material</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mosquito Net" /></div>
-                <div>
-                  <Label>Type</Label>
-                  <Select value={kind} onValueChange={(v) => setKind(v as MaterialKind)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fee">Fee</SelectItem>
-                      <SelectItem value="logistics">Logistics</SelectItem>
-                      <SelectItem value="academic">Academic</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {categories.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  No categories yet. <Link to="/app/categories" className="text-primary underline">Create a category</Link> first to use as the material type.
                 </div>
-              </div>
-              <DialogFooter><Button onClick={add} variant="gradient">Save</Button></DialogFooter>
+              ) : (
+                <div className="space-y-3">
+                  <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mosquito Net" /></div>
+                  <div>
+                    <Label>Category (type)</Label>
+                    <Select value={categoryId} onValueChange={setCategoryId}>
+                      <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name} — {KIND_LABEL[c.kind]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              <DialogFooter><Button onClick={add} variant="gradient" disabled={categories.length === 0}>Save</Button></DialogFooter>
             </DialogContent>
           </Dialog>
         )}
@@ -87,16 +98,20 @@ function MaterialsPage() {
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Package className="h-4 w-4" /> All materials</CardTitle></CardHeader>
         <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>Tracked rows</TableHead>{canEdit && <TableHead></TableHead>}</TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead>Type</TableHead><TableHead>Tracked rows</TableHead>{canEdit && <TableHead></TableHead>}</TableRow></TableHeader>
             <TableBody>
-              {materials.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.name}</TableCell>
-                  <TableCell><Badge variant="secondary">{KIND_LABEL[m.kind]}</Badge></TableCell>
-                  <TableCell>{db.tracking.filter((t) => t.materialId === m.id).length}</TableCell>
-                  {canEdit && <TableCell><Button size="icon" variant="ghost" onClick={() => remove(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>}
-                </TableRow>
-              ))}
+              {materials.map((m) => {
+                const cat = db.categories.find((c) => c.id === m.categoryId);
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell>{cat?.name ?? "—"}</TableCell>
+                    <TableCell><Badge variant="secondary">{KIND_LABEL[m.kind]}</Badge></TableCell>
+                    <TableCell>{db.tracking.filter((t) => t.materialId === m.id).length}</TableCell>
+                    {canEdit && <TableCell><Button size="icon" variant="ghost" onClick={() => remove(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

@@ -20,6 +20,7 @@ import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppMaterialsRouteImport } from './routes/app.materials'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppClassesRouteImport } from './routes/app.classes'
+import { Route as AppCategoriesRouteImport } from './routes/app.categories'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -76,11 +77,17 @@ const AppClassesRoute = AppClassesRouteImport.update({
   path: '/classes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCategoriesRoute = AppCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/categories': typeof AppCategoriesRoute
   '/app/classes': typeof AppClassesRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/materials': typeof AppMaterialsRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/categories': typeof AppCategoriesRoute
   '/app/classes': typeof AppClassesRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/materials': typeof AppMaterialsRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/categories': typeof AppCategoriesRoute
   '/app/classes': typeof AppClassesRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/materials': typeof AppMaterialsRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/categories'
     | '/app/classes'
     | '/app/dashboard'
     | '/app/materials'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/categories'
     | '/app/classes'
     | '/app/dashboard'
     | '/app/materials'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/categories'
     | '/app/classes'
     | '/app/dashboard'
     | '/app/materials'
@@ -244,10 +256,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClassesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/categories': {
+      id: '/app/categories'
+      path: '/categories'
+      fullPath: '/app/categories'
+      preLoaderRoute: typeof AppCategoriesRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppCategoriesRoute: typeof AppCategoriesRoute
   AppClassesRoute: typeof AppClassesRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppMaterialsRoute: typeof AppMaterialsRoute
@@ -259,6 +279,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCategoriesRoute: AppCategoriesRoute,
   AppClassesRoute: AppClassesRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppMaterialsRoute: AppMaterialsRoute,

@@ -86,11 +86,20 @@ export type Student = {
 
 export type MaterialKind = "fee" | "logistics" | "academic";
 
+export type MaterialCategory = {
+  id: string;
+  schoolId: string;
+  name: string;          // custom display name e.g. "Uniform", "Tuition", "Books"
+  kind: MaterialKind;    // which staff role checks materials in this category
+  createdAt: string;
+};
+
 export type Material = {
   id: string;
   schoolId: string;
   name: string;
-  kind: MaterialKind;
+  kind: MaterialKind;       // mirrors category.kind for fast filtering
+  categoryId?: string | null;
 };
 
 export type TrackingStatus = "completed" | "pending" | "overdue";
@@ -110,11 +119,12 @@ type DB = {
   schools: School[];
   classes: SchoolClass[];
   students: Student[];
+  categories: MaterialCategory[];
   materials: Material[];
   tracking: Tracking[];
 };
 
-const KEY = "acadex_db_v3";
+const KEY = "acadex_db_v4";
 const SESSION = "acadex_session_v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -124,7 +134,7 @@ function seed(): DB {
   const users: User[] = [
     { id: "u_super", email: "admin@acadex.com", username: "admin", password: "admin123", name: "Super Admin", role: "super_admin", schoolId: null },
   ];
-  return { users, schools: [], classes: [], students: [], materials: [], tracking: [] };
+  return { users, schools: [], classes: [], students: [], categories: [], materials: [], tracking: [] };
 }
 
 export function loadDB(): DB {
@@ -138,6 +148,7 @@ export function loadDB(): DB {
     }
     const parsed = JSON.parse(raw) as DB;
     if (!parsed.classes) parsed.classes = [];
+    if (!parsed.categories) parsed.categories = [];
     return parsed;
   } catch {
     const s = seed();
