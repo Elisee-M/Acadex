@@ -35,7 +35,7 @@ function TrackingPage() {
   // - staff: only those assigned to them
   const myMaterials = db.materials
     .filter((m) => schoolFilter(m.schoolId))
-    .filter((m) => user.role === "super_admin" || user.role === "school_admin" ? true : m.assignedStaffId === user.id);
+    .filter((m) => user.role === "super_admin" || user.role === "school_admin" ? true : m.assignedStaffIds.includes(user.id));
 
   const [materialId, setMaterialId] = useState<string>("");
   const activeMaterial = myMaterials.find((m) => m.id === materialId) ?? myMaterials[0];
@@ -154,7 +154,14 @@ function TrackingPage() {
       <Card className="shadow-[var(--shadow-card)]">
         <CardHeader>
           <CardTitle className="text-base">
-            {activeMaterial ? <>Checking: <span className="text-primary">{activeMaterial.name}</span> <Badge variant="secondary" className="ml-2">{staffLabel(activeMaterial.assignedStaffId)}</Badge></> : "Students"}
+            {activeMaterial ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span>Checking: <span className="text-primary">{activeMaterial.name}</span></span>
+                {activeMaterial.assignedStaffIds.map((sid) => (
+                  <Badge key={sid} variant="secondary">{staffLabel(sid)}</Badge>
+                ))}
+              </div>
+            ) : "Students"}
           </CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">

@@ -35,6 +35,7 @@ export type User = {
   role: Role;
   schoolId: string | null;     // null for super admin
   staffRoleId?: string | null; // ref to StaffRole, only when role === "staff"
+  photo?: string | null;       // optional data URL
 };
 
 export type School = {
@@ -76,13 +77,16 @@ export type Student = {
   name: string;
   classId: string;
   className?: string;
+  parentPhone: string;
+  photo?: string | null; // data URL
 };
 
 export type Material = {
   id: string;
   schoolId: string;
   name: string;
-  assignedStaffId: string; // which staff user is responsible for checking this material
+  // One or more staff users responsible for checking this material.
+  assignedStaffIds: string[];
 };
 
 export type TrackingStatus = "completed" | "pending" | "overdue";
@@ -107,7 +111,7 @@ type DB = {
   tracking: Tracking[];
 };
 
-const KEY = "acadex_db_v5";
+const KEY = "acadex_db_v6";
 const SESSION = "acadex_session_v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
