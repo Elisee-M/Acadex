@@ -12,6 +12,8 @@ import {
   GraduationCap,
   ArrowUpRight,
   TrendingUp,
+  Trophy,
+  Award,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -136,6 +138,41 @@ function Dashboard() {
     .sort((a, b) => b.completed + b.pending + b.overdue - (a.completed + a.pending + a.overdue))
     .slice(0, 6);
 
+  // Top class by brought-rate (min 1 tracked item to be eligible)
+  const classRanking = scope.classes
+    .map((c) => {
+      const studentIds = scope.students.filter((s) => s.classId === c.id).map((s) => s.id);
+      const items = scope.tracking.filter((t) => studentIds.includes(t.studentId));
+      const done = items.filter((t) => t.status === "completed").length;
+      const cName =
+        c.level.startsWith("L") && c.abbreviation
+          ? `${c.level} ${c.abbreviation}`
+          : c.level.startsWith("L") && c.trade
+            ? `${c.level} ${c.trade}`
+            : c.level;
+      return { name: cName, total: items.length, completed: done, rate: items.length ? Math.round((done / items.length) * 100) : 0 };
+    })
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.rate - a.rate || b.completed - a.completed);
+  const topClass = classRanking[0];
+
+  // Top trade by brought-rate (aggregate all classes sharing a trade)
+  const tradeMap = new Map<string, { total: number; completed: number }>();
+  for (const c of scope.classes) {
+    const trade = c.trade?.trim();
+    if (!trade) continue;
+    const studentIds = scope.students.filter((s) => s.classId === c.id).map((s) => s.id);
+    const items = scope.tracking.filter((t) => studentIds.includes(t.studentId));
+    const done = items.filter((t) => t.status === "completed").length;
+    const prev = tradeMap.get(trade) ?? { total: 0, completed: 0 };
+    tradeMap.set(trade, { total: prev.total + items.length, completed: prev.completed + done });
+  }
+  const tradeRanking = Array.from(tradeMap.entries())
+    .map(([name, v]) => ({ name, total: v.total, completed: v.completed, rate: v.total ? Math.round((v.completed / v.total) * 100) : 0 }))
+    .filter((t) => t.total > 0)
+    .sort((a, b) => b.rate - a.rate || b.completed - a.completed);
+  const topTrade = tradeRanking[0];
+
   const recent = [...scope.tracking]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 6);
@@ -214,6 +251,91 @@ function Dashboard() {
         </Card>
       ) : (
         <>
+          {/* Top performers */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="shadow-[var(--shadow-card)] border-success/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-success" /> Top class
+                  </CardTitle>
+                  <CardDescription>Highest "brought" rate</CardDescription>
+                </div>
+                {topClass && (
+                  <Badge className="bg-success/15 text-success border-success/30" variant="outline">
+                    {topClass.rate}%
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent>
+                {!topClass ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">No class data yet.</div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-foreground">{topClass.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {topClass.completed} of {topClass.total} items brought
+                    </div>
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-success transition-all" style={{ width: `${topClass.rate}%` }} />
+                    </div>
+                    {classRanking.length > 1 && (
+                      <ul className="mt-4 space-y-1.5 text-sm">
+                        {classRanking.slice(1, 4).map((c, i) => (
+                          <li key={c.name} className="flex items-center justify-between text-muted-foreground">
+                            <span>{i + 2}. {c.name}</span>
+                            <span className="font-medium text-foreground">{c.rate}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-[var(--shadow-card)] border-primary/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Award className="h-4 w-4 text-primary" /> Top trade
+                  </CardTitle>
+                  <CardDescription>Aggregated across L-classes</CardDescription>
+                </div>
+                {topTrade && (
+                  <Badge className="bg-primary/15 text-primary border-primary/30" variant="outline">
+                    {topTrade.rate}%
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent>
+                {!topTrade ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">No trade data yet.</div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-foreground">{topTrade.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {topTrade.completed} of {topTrade.total} items brought
+                    </div>
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-primary transition-all" style={{ width: `${topTrade.rate}%` }} />
+                    </div>
+                    {tradeRanking.length > 1 && (
+                      <ul className="mt-4 space-y-1.5 text-sm">
+                        {tradeRanking.slice(1, 4).map((t, i) => (
+                          <li key={t.name} className="flex items-center justify-between text-muted-foreground">
+                            <span>{i + 2}. {t.name}</span>
+                            <span className="font-medium text-foreground">{t.rate}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Charts row */}
           <div className="grid gap-6 lg:grid-cols-3">
             <Card className="lg:col-span-2 shadow-[var(--shadow-card)]">
