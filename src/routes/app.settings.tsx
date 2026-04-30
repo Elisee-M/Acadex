@@ -225,7 +225,7 @@ function SettingsPage() {
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingId ? "Edit staff member" : "Add staff member"}</DialogTitle></DialogHeader>
-          {availableRoles.length === 0 && user.role !== "super_admin" ? (
+          {availableRoles.length === 0 && user.role === "staff" ? (
             <div className="text-sm text-muted-foreground">
               No staff roles defined yet. <Link to="/app/categories" className="text-primary underline">Create a role</Link> first (e.g. Finance, Logistics) so you can assign one.
             </div>
@@ -243,7 +243,7 @@ function SettingsPage() {
                 <Select value={roleSelection} onValueChange={setRoleSelection}>
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
-                    {user.role === "super_admin" && <SelectItem value={SCHOOL_ADMIN_OPTION}>School Admin</SelectItem>}
+                    {(user.role === "super_admin" || user.role === "school_admin") && <SelectItem value={SCHOOL_ADMIN_OPTION}>School Admin</SelectItem>}
                     {availableRoles.map((r) => (
                       <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                     ))}
@@ -263,7 +263,7 @@ function SettingsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button onClick={saveStaff} variant="gradient" disabled={availableRoles.length === 0 && user.role !== "super_admin"}>{editingId ? "Save changes" : "Add"}</Button>
+            <Button onClick={saveStaff} variant="gradient" disabled={availableRoles.length === 0 && user.role === "staff"}>{editingId ? "Save changes" : "Add"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
