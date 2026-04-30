@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, uid, hasPermission, classDisplayName } from "@/lib/store";
+import { loadDB, saveDB, uid, hasPermission, classDisplayName, currentAcademicYear, currentTerm } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +106,7 @@ function StudentsPage() {
     materials.filter((m) => m.schoolId === cls.schoolId).forEach((m) => next.tracking.push({
       id: "tr_" + uid(), schoolId: cls.schoolId, studentId: newId,
       materialId: m.id, status: "pending", promisedDate: null, updatedAt: new Date().toISOString(),
+      academicYear: currentAcademicYear(), term: currentTerm(),
     }));
     saveDB(next);
     setOpen(false); resetForm();

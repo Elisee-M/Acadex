@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, getSession, classDisplayName, type TrackingStatus } from "@/lib/store";
+import { loadDB, saveDB, getSession, classDisplayName, currentAcademicYear, currentTerm, TERM_LABEL, type TrackingStatus, type Term } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,15 @@ function TrackingPage() {
   const [materialId, setMaterialId] = useState<string>("");
   const activeMaterial = myMaterials.find((m) => m.id === materialId) ?? myMaterials[0];
 
+  const [year, setYear] = useState<number>(currentAcademicYear());
+  const [term, setTerm] = useState<Term>(currentTerm());
+
+  // Years available across existing tracking + current year.
+  const yearOptions = Array.from(new Set<number>([
+    currentAcademicYear(),
+    ...db.tracking.map((t) => t.academicYear).filter((y): y is number => typeof y === "number"),
+  ])).sort((a, b) => b - a);
+
   const classes = db.classes.filter((c) => schoolFilter(c.schoolId));
   const [classFilter, setClassFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -50,12 +59,16 @@ function TrackingPage() {
     .filter((s) => classFilter === "all" || s.classId === classFilter)
     .filter((s) => !search.trim() || s.name.toLowerCase().includes(search.toLowerCase()));
 
+  function findEntry(studentId: string, mid: string) {
+    return db.tracking.find((x) => x.studentId === studentId && x.materialId === mid && x.academicYear === year && x.term === term);
+  }
+
   function setStatus(studentId: string, status: TrackingStatus, promisedDate?: string | null) {
     if (!activeMaterial) return;
     const next = loadDB();
-    let t = next.tracking.find((x) => x.studentId === studentId && x.materialId === activeMaterial.id);
+    let t = next.tracking.find((x) => x.studentId === studentId && x.materialId === activeMaterial.id && x.academicYear === year && x.term === term);
     if (!t) {
-      t = {
+      const created = {
         id: "tr_" + Math.random().toString(36).slice(2, 10),
         schoolId: activeMaterial.schoolId,
         studentId,
@@ -63,8 +76,10 @@ function TrackingPage() {
         status,
         promisedDate: promisedDate ?? null,
         updatedAt: new Date().toISOString(),
+        academicYear: year,
+        term,
       };
-      next.tracking.push(t);
+      next.tracking.push(created);
     } else {
       t.status = status;
       if (promisedDate !== undefined) t.promisedDate = promisedDate;
@@ -95,12 +110,12 @@ function TrackingPage() {
   }
 
   const counts = {
-    completed: students.filter((s) => db.tracking.find((t) => t.studentId === s.id && t.materialId === activeMaterial?.id)?.status === "completed").length,
+    completed: students.filter((s) => findEntry(s.id, activeMaterial?.id ?? "")?.status === "completed").length,
     pending: students.filter((s) => {
-      const t = db.tracking.find((t) => t.studentId === s.id && t.materialId === activeMaterial?.id);
+      const t = findEntry(s.id, activeMaterial?.id ?? "");
       return !t || t.status === "pending";
     }).length,
-    overdue: students.filter((s) => db.tracking.find((t) => t.studentId === s.id && t.materialId === activeMaterial?.id)?.status === "overdue").length,
+    overdue: students.filter((s) => findEntry(s.id, activeMaterial?.id ?? "")?.status === "overdue").length,
   };
 
   function staffLabel(id: string): string {
@@ -121,15 +136,29 @@ function TrackingPage() {
 
       <Card className="shadow-[var(--shadow-card)]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><ClipboardCheck className="h-4 w-4" /> Select material</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><ClipboardCheck className="h-4 w-4" /> Select material & period</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
+        <CardContent className="grid gap-3 md:grid-cols-5">
           <Select value={activeMaterial?.id ?? ""} onValueChange={setMaterialId}>
             <SelectTrigger><SelectValue placeholder="Choose material" /></SelectTrigger>
             <SelectContent>
               {myMaterials.map((m) => (
                 <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+            <SelectTrigger><SelectValue placeholder="Academic year" /></SelectTrigger>
+            <SelectContent>
+              {yearOptions.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={term} onValueChange={(v) => setTerm(v as Term)}>
+            <SelectTrigger><SelectValue placeholder="Term" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="T1">{TERM_LABEL.T1}</SelectItem>
+              <SelectItem value="T2">{TERM_LABEL.T2}</SelectItem>
+              <SelectItem value="T3">{TERM_LABEL.T3}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={classFilter} onValueChange={setClassFilter}>
@@ -157,6 +186,7 @@ function TrackingPage() {
             {activeMaterial ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span>Checking: <span className="text-primary">{activeMaterial.name}</span></span>
+                <Badge variant="outline">{year} · {TERM_LABEL[term]}</Badge>
                 {activeMaterial.assignedStaffIds.map((sid) => (
                   <Badge key={sid} variant="secondary">{staffLabel(sid)}</Badge>
                 ))}
@@ -181,7 +211,7 @@ function TrackingPage() {
               )}
               {students.map((s) => {
                 const cls = db.classes.find((c) => c.id === s.classId);
-                const t = activeMaterial ? db.tracking.find((x) => x.studentId === s.id && x.materialId === activeMaterial.id) : undefined;
+                const t = activeMaterial ? findEntry(s.id, activeMaterial.id) : undefined;
                 const status: TrackingStatus = t?.status ?? "pending";
                 return (
                   <TableRow key={s.id}>

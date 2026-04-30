@@ -91,6 +91,9 @@ export type Material = {
 
 export type TrackingStatus = "completed" | "pending" | "overdue";
 
+export type Term = "T1" | "T2" | "T3";
+export const TERM_LABEL: Record<Term, string> = { T1: "Term 1", T2: "Term 2", T3: "Term 3" };
+
 export type Tracking = {
   id: string;
   schoolId: string;
@@ -99,7 +102,20 @@ export type Tracking = {
   status: TrackingStatus;
   promisedDate: string | null;
   updatedAt: string;
+  academicYear: number; // e.g. 2026
+  term: Term;
 };
+
+// Default current academic year/term (heuristic based on month).
+export function currentAcademicYear(d: Date = new Date()): number {
+  return d.getFullYear();
+}
+export function currentTerm(d: Date = new Date()): Term {
+  const m = d.getMonth() + 1; // 1..12
+  if (m >= 1 && m <= 4) return "T1";
+  if (m >= 5 && m <= 8) return "T2";
+  return "T3";
+}
 
 type DB = {
   users: User[];
@@ -111,7 +127,7 @@ type DB = {
   tracking: Tracking[];
 };
 
-const KEY = "acadex_db_v6";
+const KEY = "acadex_db_v7";
 const SESSION = "acadex_session_v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, uid, hasPermission } from "@/lib/store";
+import { loadDB, saveDB, uid, hasPermission, currentAcademicYear, currentTerm } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,8 @@ function MaterialsPage() {
         status: "pending",
         promisedDate: null,
         updatedAt: new Date().toISOString(),
+        academicYear: currentAcademicYear(),
+        term: currentTerm(),
       });
     });
     saveDB(next);
