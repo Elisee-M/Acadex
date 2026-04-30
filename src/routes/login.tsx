@@ -5,29 +5,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/lib/store";
-import { toast } from "sonner";
+import { Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Login — Acadex" }, { name: "description", content: "Sign in to your Acadex workspace." }] }),
   component: LoginPage,
 });
 
+type Popup = { kind: "success" | "error"; title: string; message: string } | null;
+
 function LoginPage() {
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState<Popup>(null);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setPopup(null);
     setTimeout(() => {
       const u = login(identifier, password);
       setLoading(false);
-      if (!u) { toast.error("Invalid credentials"); return; }
-      toast.success(`Welcome, ${u.name}`);
-      navigate({ to: "/app/dashboard" });
-    }, 250);
+      if (!u) {
+        setPopup({ kind: "error", title: "Login failed", message: "Invalid email/username or password." });
+        return;
+      }
+      setPopup({ kind: "success", title: "Welcome back!", message: `Signed in as ${u.name}` });
+      setTimeout(() => navigate({ to: "/app/dashboard" }), 900);
+    }, 300);
   }
 
   return (
@@ -63,6 +70,59 @@ function LoginPage() {
           </form>
         </div>
       </div>
+
+      {popup && <AuthPopup popup={popup} onClose={() => setPopup(null)} />}
+    </div>
+  );
+}
+
+function AuthPopup({ popup, onClose }: { popup: NonNullable<Popup>; onClose: () => void }) {
+  const isSuccess = popup.kind === "success";
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-2xl animate-in zoom-in-95 fade-in duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center">
+          {isSuccess ? <SuccessTick /> : <ErrorCross />}
+        </div>
+        <h3 className={`text-xl font-bold ${isSuccess ? "text-success" : "text-destructive"}`}>
+          {popup.title}
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">{popup.message}</p>
+        {!isSuccess && (
+          <Button variant="outline" className="mt-6 w-full" onClick={onClose}>
+            Try again
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SuccessTick() {
+  return (
+    <div className="relative flex h-20 w-20 items-center justify-center">
+      <span className="absolute inset-0 rounded-full bg-success/15 animate-ping" />
+      <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-success/15 ring-4 ring-success/30">
+        <Check className="h-10 w-10 text-success animate-in zoom-in-50 duration-500" strokeWidth={3} />
+      </div>
+    </div>
+  );
+}
+
+function ErrorCross() {
+  return (
+    <div className="relative flex h-20 w-20 items-center justify-center">
+      <span className="absolute inset-0 rounded-full bg-destructive/10" />
+      <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-destructive/15 ring-4 ring-destructive/30 animate-[shake_0.5s_ease-in-out]">
+        <X className="h-10 w-10 text-destructive animate-in zoom-in-50 duration-300" strokeWidth={3} />
+      </div>
+      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }`}</style>
     </div>
   );
 }
