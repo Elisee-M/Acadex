@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-acadex";
 import { setSession, hasPermission, userRoleLabel } from "@/lib/store";
 import { useDB } from "@/hooks/use-acadex";
-import { LayoutDashboard, Users, Package, FileBarChart, Settings, Building2, LogOut, Menu, X, GraduationCap, ClipboardCheck, Tag } from "lucide-react";
+import { LayoutDashboard, Users, Package, FileBarChart, Settings, Building2, LogOut, Menu, X, GraduationCap, ClipboardCheck, Tag, UserCog } from "lucide-react";
 import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -24,6 +24,7 @@ const NAV = [
   { to: "/app/students", label: "Students", icon: Users, perm: "manage_students" },
   { to: "/app/classes", label: "Classes", icon: GraduationCap, perm: "manage_classes" },
   { to: "/app/categories", label: "Staff Roles", icon: Tag, perm: "manage_roles" },
+  { to: "/app/staff", label: "Staff", icon: UserCog, perm: "manage_staff" },
   { to: "/app/materials", label: "Materials", icon: Package, perm: "manage_materials" },
   { to: "/app/tracking", label: "Tracking", icon: ClipboardCheck, perm: null },
   { to: "/app/reports", label: "Reports", icon: FileBarChart, perm: "view_reports" },
