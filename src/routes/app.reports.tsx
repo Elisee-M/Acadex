@@ -7,7 +7,10 @@ import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { FileDown } from "lucide-react";
 import { TERM_LABEL, currentAcademicYear, type Term } from "@/lib/store";
+import { exportHTMLToPDF, escapeHTML, statusBadgeHTML } from "@/lib/pdf";
 
 export const Route = createFileRoute("/app/reports")({
   head: () => ({ meta: [{ title: "Reports — Acadex" }] }),
@@ -137,17 +140,30 @@ function ReportsPage() {
       </div>
 
       <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">Detailed report</CardTitle>
-          <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="overdue">Overdue only</SelectItem>
-              <SelectItem value="pending">Pending only</SelectItem>
-              <SelectItem value="completed">Brought only</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="overdue">Overdue only</SelectItem>
+                <SelectItem value="pending">Pending only</SelectItem>
+                <SelectItem value="completed">Brought only</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" onClick={() => {
+              const html = `<h1>Acadex report</h1><div class="meta">${year !== "all" ? year : "All years"} · ${term !== "all" ? TERM_LABEL[term as Term] : "All terms"} · ${filter}</div>` +
+                `<table><thead><tr><th>Student</th><th>Class</th><th>Material</th><th>Period</th><th>Status</th><th>Promised</th></tr></thead><tbody>` +
+                missing.map((t) => {
+                  const s = students.find((x) => x.id === t.studentId);
+                  const m = materials.find((x) => x.id === t.materialId);
+                  if (!s || !m) return "";
+                  return `<tr><td>${escapeHTML(s.name)}</td><td>${escapeHTML(s.className ?? "")}</td><td>${escapeHTML(m.name)}</td><td>${t.academicYear} · ${TERM_LABEL[t.term]}</td><td>${statusBadgeHTML(t.status)}</td><td>${t.promisedDate ? new Date(t.promisedDate).toLocaleDateString() : "—"}</td></tr>`;
+                }).join("") + `</tbody></table>`;
+              exportHTMLToPDF("Acadex report", html);
+            }}><FileDown className="mr-1 h-3.5 w-3.5" />PDF</Button>
+          </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>

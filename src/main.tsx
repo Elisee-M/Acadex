@@ -2,8 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { getRouter } from "./router";
+import { initTheme } from "./hooks/use-theme";
 import "./styles.css";
 
+initTheme();
 const router = getRouter();
 
 declare module "@tanstack/react-router" {

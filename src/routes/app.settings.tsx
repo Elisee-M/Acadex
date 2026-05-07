@@ -5,9 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { RotateCcw, KeyRound } from "lucide-react";
+import { RotateCcw, KeyRound, Globe, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
+import { useLang, type Lang } from "@/lib/i18n";
+import { useTheme } from "@/hooks/use-theme";
 
 export const Route = createFileRoute("/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Acadex" }] }),
@@ -17,6 +20,8 @@ export const Route = createFileRoute("/app/settings")({
 function SettingsPage() {
   const db = useDB();
   const user = useSession()!;
+  const { lang, setLang, t } = useLang();
+  const { theme, setTheme } = useTheme();
 
   const [curPwd, setCurPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -34,9 +39,33 @@ function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("settings")}</h1>
         <p className="text-sm text-muted-foreground">Manage your account and workspace.</p>
       </div>
+
+      <Card className="shadow-[var(--shadow-card)]">
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Globe className="h-4 w-4" />{t("appearance")}</CardTitle></CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label>{t("language")}</Label>
+            <Select value={lang} onValueChange={(v) => setLang(v as Lang)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="rw">Kinyarwanda</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>{t("theme")}</Label>
+            <div className="mt-1 flex gap-2">
+              <Button variant={theme === "light" ? "gradient" : "outline"} size="sm" onClick={() => setTheme("light")}><Sun className="mr-1 h-3.5 w-3.5" />{t("light")}</Button>
+              <Button variant={theme === "dark" ? "gradient" : "outline"} size="sm" onClick={() => setTheme("dark")}><Moon className="mr-1 h-3.5 w-3.5" />{t("dark")}</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="shadow-[var(--shadow-card)]">
         <CardHeader><CardTitle className="text-base">Profile</CardTitle></CardHeader>

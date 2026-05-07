@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, uid, hasPermission, classDisplayName, currentAcademicYear, currentTerm } from "@/lib/store";
+import { loadDB, saveDB, uid, hasPermission, classDisplayName, currentAcademicYear, currentTerm, logAudit } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +88,7 @@ function StudentsPage() {
       s.parentPhone = parentPhone.trim();
       s.photo = photo;
       saveDB(next);
+      logAudit("student.update", name.trim());
       setOpen(false); resetForm();
       toast.success("Student updated");
       return;
@@ -109,15 +110,18 @@ function StudentsPage() {
       academicYear: currentAcademicYear(), term: currentTerm(),
     }));
     saveDB(next);
+    logAudit("student.create", name.trim());
     setOpen(false); resetForm();
     toast.success("Student added");
   }
 
   function removeStudent(id: string) {
     const next = loadDB();
+    const stu = next.students.find((s) => s.id === id);
     next.students = next.students.filter((s) => s.id !== id);
     next.tracking = next.tracking.filter((t) => t.studentId !== id);
     saveDB(next);
+    if (stu) logAudit("student.delete", stu.name);
   }
 
 
@@ -221,7 +225,7 @@ function StudentsPage() {
                           </div>
                         )}
                         <div>
-                          <div>{s.name}</div>
+                          <Link to="/app/students/$studentId" params={{ studentId: s.id }} className="hover:text-primary hover:underline">{s.name}</Link>
                           {s.parentPhone && <div className="text-xs text-muted-foreground">{s.parentPhone}</div>}
                         </div>
                       </div>
@@ -230,9 +234,11 @@ function StudentsPage() {
                     <TableCell className="text-sm text-muted-foreground">{done} / {total} completed</TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex gap-1">
-                        <Button size="sm" variant="outline" onClick={() => setViewStudent(s.id)}>
-                          <Eye className="mr-1 h-3.5 w-3.5" /> View
-                        </Button>
+                        <Link to="/app/students/$studentId" params={{ studentId: s.id }}>
+                          <Button size="sm" variant="outline">
+                            <Eye className="mr-1 h-3.5 w-3.5" /> View
+                          </Button>
+                        </Link>
                         {canEdit && (
                           <>
                             <Button size="icon" variant="ghost" onClick={() => openEdit(s.id)}>

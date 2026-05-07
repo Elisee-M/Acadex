@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
-import { loadDB, saveDB, getSession, classDisplayName, currentAcademicYear, currentTerm, TERM_LABEL, type TrackingStatus, type Term } from "@/lib/store";
+import { loadDB, saveDB, getSession, classDisplayName, currentAcademicYear, currentTerm, TERM_LABEL, logAudit, type TrackingStatus, type Term } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,8 @@ function TrackingPage() {
       t.updatedAt = new Date().toISOString();
     }
     saveDB(next);
+    const stuName = next.students.find((s) => s.id === studentId)?.name ?? studentId;
+    logAudit("tracking.update", `${stuName} · ${activeMaterial.name}`, status);
   }
 
   function recordPromise(studentId: string, dateStr: string) {

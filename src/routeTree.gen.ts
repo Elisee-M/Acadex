@@ -19,9 +19,13 @@ import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppSchoolsRouteImport } from './routes/app.schools'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppMaterialsRouteImport } from './routes/app.materials'
+import { Route as AppImportRouteImport } from './routes/app.import'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppClassesRouteImport } from './routes/app.classes'
 import { Route as AppCategoriesRouteImport } from './routes/app.categories'
+import { Route as AppAuditRouteImport } from './routes/app.audit'
+import { Route as AppArchivesRouteImport } from './routes/app.archives'
+import { Route as AppStudentsStudentIdRouteImport } from './routes/app.students.$studentId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -73,6 +77,11 @@ const AppMaterialsRoute = AppMaterialsRouteImport.update({
   path: '/materials',
   getParentRoute: () => AppRoute,
 } as any)
+const AppImportRoute = AppImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -88,52 +97,79 @@ const AppCategoriesRoute = AppCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppArchivesRoute = AppArchivesRouteImport.update({
+  id: '/archives',
+  path: '/archives',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStudentsStudentIdRoute = AppStudentsStudentIdRouteImport.update({
+  id: '/$studentId',
+  path: '/$studentId',
+  getParentRoute: () => AppStudentsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/archives': typeof AppArchivesRoute
+  '/app/audit': typeof AppAuditRoute
   '/app/categories': typeof AppCategoriesRoute
   '/app/classes': typeof AppClassesRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/import': typeof AppImportRoute
   '/app/materials': typeof AppMaterialsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schools': typeof AppSchoolsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
-  '/app/students': typeof AppStudentsRoute
+  '/app/students': typeof AppStudentsRouteWithChildren
   '/app/tracking': typeof AppTrackingRoute
+  '/app/students/$studentId': typeof AppStudentsStudentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/archives': typeof AppArchivesRoute
+  '/app/audit': typeof AppAuditRoute
   '/app/categories': typeof AppCategoriesRoute
   '/app/classes': typeof AppClassesRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/import': typeof AppImportRoute
   '/app/materials': typeof AppMaterialsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schools': typeof AppSchoolsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
-  '/app/students': typeof AppStudentsRoute
+  '/app/students': typeof AppStudentsRouteWithChildren
   '/app/tracking': typeof AppTrackingRoute
+  '/app/students/$studentId': typeof AppStudentsStudentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/archives': typeof AppArchivesRoute
+  '/app/audit': typeof AppAuditRoute
   '/app/categories': typeof AppCategoriesRoute
   '/app/classes': typeof AppClassesRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/import': typeof AppImportRoute
   '/app/materials': typeof AppMaterialsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schools': typeof AppSchoolsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
-  '/app/students': typeof AppStudentsRoute
+  '/app/students': typeof AppStudentsRouteWithChildren
   '/app/tracking': typeof AppTrackingRoute
+  '/app/students/$studentId': typeof AppStudentsStudentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,9 +177,12 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/archives'
+    | '/app/audit'
     | '/app/categories'
     | '/app/classes'
     | '/app/dashboard'
+    | '/app/import'
     | '/app/materials'
     | '/app/reports'
     | '/app/schools'
@@ -151,14 +190,18 @@ export interface FileRouteTypes {
     | '/app/staff'
     | '/app/students'
     | '/app/tracking'
+    | '/app/students/$studentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app'
     | '/login'
+    | '/app/archives'
+    | '/app/audit'
     | '/app/categories'
     | '/app/classes'
     | '/app/dashboard'
+    | '/app/import'
     | '/app/materials'
     | '/app/reports'
     | '/app/schools'
@@ -166,14 +209,18 @@ export interface FileRouteTypes {
     | '/app/staff'
     | '/app/students'
     | '/app/tracking'
+    | '/app/students/$studentId'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/login'
+    | '/app/archives'
+    | '/app/audit'
     | '/app/categories'
     | '/app/classes'
     | '/app/dashboard'
+    | '/app/import'
     | '/app/materials'
     | '/app/reports'
     | '/app/schools'
@@ -181,6 +228,7 @@ export interface FileRouteTypes {
     | '/app/staff'
     | '/app/students'
     | '/app/tracking'
+    | '/app/students/$studentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -261,6 +309,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMaterialsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/import': {
+      id: '/app/import'
+      path: '/import'
+      fullPath: '/app/import'
+      preLoaderRoute: typeof AppImportRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard': {
       id: '/app/dashboard'
       path: '/dashboard'
@@ -282,32 +337,71 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCategoriesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/audit': {
+      id: '/app/audit'
+      path: '/audit'
+      fullPath: '/app/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/archives': {
+      id: '/app/archives'
+      path: '/archives'
+      fullPath: '/app/archives'
+      preLoaderRoute: typeof AppArchivesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/students/$studentId': {
+      id: '/app/students/$studentId'
+      path: '/$studentId'
+      fullPath: '/app/students/$studentId'
+      preLoaderRoute: typeof AppStudentsStudentIdRouteImport
+      parentRoute: typeof AppStudentsRoute
+    }
   }
 }
 
+interface AppStudentsRouteChildren {
+  AppStudentsStudentIdRoute: typeof AppStudentsStudentIdRoute
+}
+
+const AppStudentsRouteChildren: AppStudentsRouteChildren = {
+  AppStudentsStudentIdRoute: AppStudentsStudentIdRoute,
+}
+
+const AppStudentsRouteWithChildren = AppStudentsRoute._addFileChildren(
+  AppStudentsRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppArchivesRoute: typeof AppArchivesRoute
+  AppAuditRoute: typeof AppAuditRoute
   AppCategoriesRoute: typeof AppCategoriesRoute
   AppClassesRoute: typeof AppClassesRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppImportRoute: typeof AppImportRoute
   AppMaterialsRoute: typeof AppMaterialsRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSchoolsRoute: typeof AppSchoolsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStaffRoute: typeof AppStaffRoute
-  AppStudentsRoute: typeof AppStudentsRoute
+  AppStudentsRoute: typeof AppStudentsRouteWithChildren
   AppTrackingRoute: typeof AppTrackingRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppArchivesRoute: AppArchivesRoute,
+  AppAuditRoute: AppAuditRoute,
   AppCategoriesRoute: AppCategoriesRoute,
   AppClassesRoute: AppClassesRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppImportRoute: AppImportRoute,
   AppMaterialsRoute: AppMaterialsRoute,
   AppReportsRoute: AppReportsRoute,
   AppSchoolsRoute: AppSchoolsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStaffRoute: AppStaffRoute,
-  AppStudentsRoute: AppStudentsRoute,
+  AppStudentsRoute: AppStudentsRouteWithChildren,
   AppTrackingRoute: AppTrackingRoute,
 }
 
