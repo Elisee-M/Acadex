@@ -4,8 +4,9 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { login } from "@/lib/store";
+import { loginWithPassword, signUpWithPassword, signInWithGoogle } from "@/lib/store";
 import { Check, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Login — Acadex" }, { name: "description", content: "Sign in to your Acadex workspace." }] }),
@@ -16,29 +17,40 @@ type Popup = { kind: "success" | "error"; title: string; message: string } | nul
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [identifier, setIdentifier] = useState("");
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<Popup>(null);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setPopup(null);
-    setTimeout(() => {
-      const u = login(identifier, password);
+    setLoading(true); setPopup(null);
+    if (mode === "signup") {
+      const r = await signUpWithPassword(email, password, name || email.split("@")[0]);
       setLoading(false);
-      if (!u) {
-        setPopup({ kind: "error", title: "Login failed", message: "Invalid email/username or password." });
-        return;
-      }
-      setPopup({ kind: "success", title: "Welcome back!", message: `Signed in as ${u.name}` });
-      setTimeout(() => navigate({ to: "/app/dashboard" }), 900);
-    }, 300);
+      if (!r.ok) return setPopup({ kind: "error", title: "Sign up failed", message: r.error || "Try again." });
+      setPopup({ kind: "success", title: "Check your email", message: "Confirm your address to finish signing up." });
+      return;
+    }
+    const r = await loginWithPassword(email, password);
+    setLoading(false);
+    if (!r.ok || !r.user) return setPopup({ kind: "error", title: "Login failed", message: r.error || "Invalid email or password." });
+    setPopup({ kind: "success", title: "Welcome back!", message: `Signed in as ${r.user.name}` });
+    setTimeout(() => navigate({ to: "/app/dashboard" }), 700);
+  }
+
+  async function onGoogle() {
+    setLoading(true);
+    const r = await signInWithGoogle();
+    setLoading(false);
+    if (!r.ok) setPopup({ kind: "error", title: "Google sign-in failed", message: r.error || "Try again." });
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="relative grid min-h-screen lg:grid-cols-2">
+      <div className="absolute right-4 top-4 z-20"><ThemeToggle /></div>
       <div className="relative hidden overflow-hidden lg:block" style={{ background: "var(--gradient-hero)" }}>
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 1px, transparent 1px), radial-gradient(circle at 80% 60%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
         <div className="relative flex h-full flex-col justify-between p-12 text-primary-foreground">
@@ -53,20 +65,36 @@ function LoginPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="lg:hidden mb-8"><Link to="/"><Logo /></Link></div>
-          <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your Acadex account.</p>
+          <h1 className="text-2xl font-bold text-foreground">{mode === "login" ? "Welcome back" : "Create your account"}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{mode === "login" ? "Sign in to your Acadex account." : "Sign up to get started with Acadex."}</p>
           <form onSubmit={onSubmit} className="mt-8 space-y-4">
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Full name</Label>
+                <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="identifier">Email or username</Label>
-              <Input id="identifier" type="text" value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com or username" required />
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
             <Button type="submit" disabled={loading} variant="gradient" className="w-full">
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Please wait..." : mode === "login" ? "Sign in" : "Sign up"}
             </Button>
+            <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={onGoogle}>
+              Continue with Google
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              {mode === "login" ? (
+                <>No account? <button type="button" className="text-primary hover:underline" onClick={() => setMode("signup")}>Sign up</button></>
+              ) : (
+                <>Already have an account? <button type="button" className="text-primary hover:underline" onClick={() => setMode("login")}>Sign in</button></>
+              )}
+            </p>
           </form>
         </div>
       </div>

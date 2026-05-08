@@ -546,31 +546,28 @@ function SchoolDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {new Date().toLocaleDateString(undefined, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              <Shield className="size-3" />
+              {user.role === "school_admin" ? "School Admin" : "Staff"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+            </span>
+          </div>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">
             {greeting()}, {user.name.split(" ")[0]}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {scope.schools[0]?.name ?? "Your school"}
+            {scope.schools[0]?.name ?? "Your school"} · {scope.students.length} student{scope.students.length === 1 ? "" : "s"} · {total} tracking event{total === 1 ? "" : "s"}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link to="/app/reports">
-              View reports
-              <ArrowRight className="size-4" />
-            </Link>
+            <Link to="/app/reports"><TrendingUp className="size-4" /> Reports</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link to="/app/tracking">
-              <Plus className="size-4" /> New tracking
-            </Link>
+            <Link to="/app/tracking"><Plus className="size-4" /> New tracking</Link>
           </Button>
         </div>
       </div>

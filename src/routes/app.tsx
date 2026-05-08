@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useLocation, redirect } fro
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-acadex";
-import { setSession, hasPermission, userRoleLabel } from "@/lib/store";
+import { signOut, hasPermission, userRoleLabel } from "@/lib/store";
 import { useDB } from "@/hooks/use-acadex";
 import { LayoutDashboard, Users, Package, FileBarChart, Settings, Building2, LogOut, Menu, X, GraduationCap, ClipboardCheck, Tag, UserCog, Sun, Moon, Upload, Archive, History, Globe } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
@@ -46,8 +46,8 @@ function AppShell() {
 
   if (!user) return null;
 
-  function logout() {
-    setSession(null);
+  async function logout() {
+    await signOut();
     navigate({ to: "/login" });
   }
 

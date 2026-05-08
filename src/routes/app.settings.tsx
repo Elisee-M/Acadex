@@ -27,10 +27,10 @@ function SettingsPage() {
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
 
-  function submitPasswordChange(e: React.FormEvent) {
+  async function submitPasswordChange(e: React.FormEvent) {
     e.preventDefault();
     if (newPwd !== confirmPwd) return toast.error("New passwords do not match");
-    const res = changePassword(user.id, curPwd, newPwd);
+    const res = await changePassword(user.id, curPwd, newPwd);
     if (!res.ok) return toast.error(res.error || "Could not change password");
     setCurPwd(""); setNewPwd(""); setConfirmPwd("");
     toast.success("Password updated");
