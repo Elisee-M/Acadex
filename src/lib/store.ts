@@ -306,7 +306,14 @@ export function setSession(u: User | null) {
 }
 
 // Auth
-export async function loginWithPassword(email: string, password: string): Promise<{ ok: boolean; error?: string; user?: User }> {
+export async function loginWithPassword(identifier: string, password: string): Promise<{ ok: boolean; error?: string; user?: User }> {
+  let email = identifier.trim();
+  if (!email.includes("@")) {
+    const { data: resolved, error: rpcErr } = await supabase.rpc("get_email_by_username", { _username: email });
+    if (rpcErr) return { ok: false, error: rpcErr.message };
+    if (!resolved) return { ok: false, error: "No account found for that username" };
+    email = resolved as string;
+  }
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.user) return { ok: false, error: error?.message ?? "Login failed" };
   // Fetch profile + role

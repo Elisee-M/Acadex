@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useDB, useSession } from "@/hooks/use-acadex";
 import { loadDB, saveDB, uid } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,8 @@ import { useState } from "react";
 import { Plus, Trash2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSession } from "@/lib/store";
+import { hydrateFromCloud } from "@/lib/store";
+import { createClient } from "@supabase/supabase-js";
 
 export const Route = createFileRoute("/app/schools")({
   beforeLoad: () => {
@@ -33,20 +36,53 @@ function SchoolsPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPass, setAdminPass] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function add() {
-    if (!name || !adminEmail) return toast.error("Fill required fields");
-    const next = loadDB();
-    const emailLower = adminEmail.toLowerCase();
-    const usernameLower = adminUsername.trim().toLowerCase();
-    if (next.users.some((u) => u.email.toLowerCase() === emailLower)) return toast.error("Admin email already exists");
-    if (usernameLower && next.users.some((u) => (u.username ?? "").toLowerCase() === usernameLower)) return toast.error("Username already taken");
-    const sid = "sch_" + uid();
-    next.schools.push({ id: sid, name, location, createdAt: new Date().toISOString() });
-    next.users.push({ id: "u_" + uid(), name: adminName || "School Admin", email: adminEmail, username: adminUsername.trim() || undefined, password: adminPass || "school123", role: "school_admin", schoolId: sid });
-    saveDB(next);
-    setOpen(false); setName(""); setLocation(""); setAdminName(""); setAdminEmail(""); setAdminUsername(""); setAdminPass("");
-    toast.success("School created");
+  async function add() {
+    if (!name || !adminEmail || !adminPass) return toast.error("Fill required fields (name, admin email, password)");
+    if (adminPass.length < 6) return toast.error("Password must be at least 6 characters");
+    setBusy(true);
+    try {
+      const sid = uid();
+      const { error: schoolErr } = await supabase.from("schools").insert({
+        id: sid, name, location: location || "",
+      });
+      if (schoolErr) throw new Error(schoolErr.message);
+
+      // Create the auth user via a fresh client (no session persistence)
+      // so the current super_admin session is not affected.
+      const url = import.meta.env.VITE_SUPABASE_URL as string;
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const tmp = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, storage: undefined } });
+      const { data: signed, error: signErr } = await tmp.auth.signUp({
+        email: adminEmail,
+        password: adminPass,
+        options: { data: { name: adminName || "School Admin", username: adminUsername.trim() || null } },
+      });
+      if (signErr || !signed.user) throw new Error(signErr?.message ?? "Failed to create admin user");
+      const newId = signed.user.id;
+
+      // The handle_new_user trigger created a profile + 'staff' role.
+      // As super_admin, attach school + switch role to school_admin.
+      const { error: pErr } = await supabase.from("profiles").update({
+        school_id: sid,
+        name: adminName || "School Admin",
+        username: adminUsername.trim() || null,
+      }).eq("id", newId);
+      if (pErr) throw new Error(pErr.message);
+
+      await supabase.from("user_roles").delete().eq("user_id", newId);
+      const { error: rErr } = await supabase.from("user_roles").insert({ user_id: newId, role: "school_admin" });
+      if (rErr) throw new Error(rErr.message);
+
+      await hydrateFromCloud();
+      setOpen(false); setName(""); setLocation(""); setAdminName(""); setAdminEmail(""); setAdminUsername(""); setAdminPass("");
+      toast.success("School and admin created");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to create school");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function remove(id: string) {
@@ -80,7 +116,7 @@ function SchoolsPage() {
               <div><Label>Admin username (optional)</Label><Input value={adminUsername} onChange={(e) => setAdminUsername(e.target.value)} placeholder="for sign-in" /></div>
               <div><Label>Temporary password</Label><Input value={adminPass} onChange={(e) => setAdminPass(e.target.value)} placeholder="school123" /></div>
             </div>
-            <DialogFooter><Button onClick={add} variant="gradient">Create</Button></DialogFooter>
+            <DialogFooter><Button onClick={add} disabled={busy} variant="gradient">{busy ? "Creating..." : "Create"}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
