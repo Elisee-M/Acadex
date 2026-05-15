@@ -75,11 +75,11 @@ function MaterialsPage() {
     const firstStaff = next.users.find((u) => u.id === assignedStaffIds[0]);
     if (!firstStaff || !firstStaff.schoolId) return toast.error("Staff not found");
     const schoolId = firstStaff.schoolId;
-    const id = "m_" + uid();
+    const id = uid();
     next.materials.push({ id, schoolId, name: name.trim(), assignedStaffIds: [...assignedStaffIds] });
     next.students.filter((s) => s.schoolId === schoolId).forEach((s) => {
       next.tracking.push({
-        id: "tr_" + uid(),
+        id: uid(),
         schoolId,
         studentId: s.id,
         materialId: id,
@@ -126,7 +126,7 @@ function MaterialsPage() {
           <DialogHeader><DialogTitle>{editingId ? "Edit material" : "Add material"}</DialogTitle></DialogHeader>
           {staffList.length === 0 ? (
             <div className="text-sm text-muted-foreground">
-              No staff members yet. <Link to="/app/settings" className="text-primary underline">Add a staff member</Link> first so you can assign who checks this material.
+              No staff members yet. <Link to="/app/staff" className="text-primary underline">Add a staff member</Link> first so you can assign who checks this material.
             </div>
           ) : (
             <div className="space-y-3">
